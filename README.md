@@ -9,13 +9,30 @@ This asset, along with all the others, was built initially with **Claude Code** 
 
 **Please treat this as partially tested.** Every asset has its own headless test suite and those suites pass, but very little of this has been in front of real players yet. Expect rough edges, and please report anything you run into.
 
+I intend on reviewing code, testing, and editing documentation regularly. If you're interested in helping out, please let me know!
+
+## What it does
+It records a match to a file and plays it back. A record is a tick, a channel name and a payload: raw bytes, or any plain value such as a Dictionary, an Array, numbers, strings or vectors. The addon never looks inside a payload, so the same format works for a shooter, a racing timer or a lobby.
+
+- **Seeking.** Every few seconds the recorder asks the game for a **keyframe**, a full copy of its state. Playback can then jump to any tick by starting from the nearest keyframe and playing forward, and it ends up in exactly the state that playing from the start would give.
+- **Crashes lose at most one chunk.** The file is written in chunks of one second by default, and each one is saved to disk as soon as it is complete. A server that crashes mid-match leaves a file that plays up to its last whole chunk.
+- **Edited files are refused.** Each chunk has a hash that also covers the chunk before it, so changing, removing or reordering any part of the file is caught. Give the recorder a key and the hashes become HMACs that only the key's holder can produce.
+- **Small files.** Chunks are compressed with zstd, and there is a size limit per file and per record. A file that reaches its limit is finished cleanly.
+- **"Save that".** The last minute is kept in memory, and any part of it can be written out as a normal replay, which is how a server can keep evidence without writing every match to disk.
+
+## Getting started
+You need [Godot 4.7](https://godotengine.org/download). The easiest way to get this addon and the ones it needs is [dot-bootstrap](https://github.com/modcommunity/dot-bootstrap), which clones every project and links the addons into each one.
+
+To add it to your own project by hand, copy `addons/dot_replay/` and [dot-core](https://github.com/modcommunity/dot-core)'s `addons/dot_core/` into it and enable dot-replay in **Project → Project Settings → Plugins**. dot-core is the only dependency.
+
 ## Recording
 
-A record is a tick, a channel name and a payload. The payload is yours: raw bytes, or any plain value (a Dictionary, an Array, numbers, strings, vectors). dot-replay never interprets it, so the same format holds a shooter, a racing timer and a lobby.
-
 ```gdscript
+var config := DotReplayConfig.new()
+config.load_layered()                                    # so the settings below can be changed without a rebuild
+
 var rec := DotReplayRecorder.new()
-rec.configure(DotReplayConfig.new(), 64)                 # 64 ticks per second
+rec.configure(config, 64)                                # 64 ticks per second
 rec.keyframe_fn = func(_tick: int) -> Variant: return game.capture_state()
 var header := DotReplayHeader.make("arena", "dm_box", 64, players)
 rec.start(header, "user://replays/match.dreplay")
@@ -25,44 +42,70 @@ rec.advance(tick)
 rec.record_value(tick, &"events", {"kill": [attacker, victim]})
 rec.record(tick, &"snapshot", snapshot_bytes)
 
-var evidence: Dictionary = rec.stop().value              # path, final hash, tick range
+var evidence: Dictionary = rec.stop().value              # path, final hash, tick range, size
 ```
 
-Every few seconds the recorder asks the game for a **keyframe**, a whole copy of its state, which is what lets playback jump to any point without replaying the match from the start.
+To save the last thirty seconds while still recording:
+
+```gdscript
+rec.save_clip("user://replays/clip.dreplay", 30.0)
+```
+
+A clip starts at the keyframe before the time you asked for, so it can be a little longer than you asked for. It plays, seeks and verifies like any other replay.
 
 ## Playing back
+`DotReplayPlayer` emits records, and your game applies them:
 
-`DotReplayPlayer` is a node that emits records rather than applying them. The game connects three signals: `state_reset` (replace your state with this keyframe), `record_played` (apply this record) and `finished`.
+```gdscript
+var player := DotReplayPlayer.new()
+add_child(player)
+player.state_reset.connect(func(tick, state): game.restore_state(state))   # after a seek
+player.record_played.connect(func(record): game.apply(record.channel, record.value()))
+player.finished.connect(func(): show_end_screen())
 
-- Any speed from 0.25x to 8x, pause and resume.
-- `seek(tick)` jumps to the nearest keyframe at or before `tick`, then fast-forwards to it. It reaches exactly the state that playing from the start would have. The suite checks that at dozens of ticks, including every keyframe boundary.
+player.open("user://replays/match.dreplay")             # refused if any chunk was changed
+player.play()
+
+# every frame:
+player.poll()
+```
+
+- `set_speed(2.0)` plays at any speed from 0.25x to 8x. `pause()` and `resume()` do what they say.
+- `seek(tick)` jumps to any tick.
 - `set_channels(["chat", "events"])` plays only the channels you ask for.
-
-## Crashes, edits and size
-
-- **A crash loses at most one chunk.** The file is written in chunks, one second each by default, and each chunk is flushed to disk as soon as it is complete. A server that dies mid-match leaves a file that plays up to its last whole chunk.
-- **An edited file is refused.** Every chunk carries a hash that also covers the chunk before it, so changing, removing or moving any part of the file is detected. Give the recorder a key and the hashes become HMACs that only the key's holder can produce.
-- **Files stay small, and have a size limit.** Each chunk is compressed with zstd, which makes a repetitive snapshot stream more than ten times smaller. There is a limit per file and per record, and a file that reaches its limit is finished cleanly rather than cut off.
-
-## "Save that"
-
-`DotReplayRing` keeps the last minute (or however long you configure) in memory. `rec.save_clip(path, 30.0)` writes the last thirty seconds as an ordinary replay, starting from a keyframe, that plays, seeks and verifies like any other. A server can keep evidence of every match without writing every match to disk.
+- `step_ticks(1)` moves forward exactly one tick, for frame-by-frame viewing.
 
 ## Connecting a server
-
 Two small bridges record from other addons without depending on them:
 
-- `DotReplayEventTap` records every event a server's event bus fires, including the ones a hook cancelled.
+- `DotReplayEventTap` records every event a server's event bus fires, including the ones a hook cancelled. `attach(bus)` and `detach()`.
 - `DotReplayNetTap` records the snapshot stream a netcode manager sends to one peer.
 
-## Installing
+## Settings
+`DotReplayConfig` is layered like every Dot config: inspector defaults, then a JSON file, then the environment, then the command line. Times are in seconds, and the recorder converts them using the tick rate you give it.
 
-Copy `addons/dot_replay/` and [`dot-core`](https://github.com/modcommunity/dot-core)'s `addons/dot_core/` into your project and enable it in **Project → Project Settings → Plugins**.
+```bash
+DOT_REPLAY_COMPRESSION=deflate godot --headless -- --replay-ring-seconds=300
+```
 
-## Dependencies
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `directory` | `user://replays` | Where finished replays are written |
+| `chunk_seconds` | 1.0 | How much one chunk holds, and so the most a crash can lose |
+| `chunk_kib` | 256 | A chunk is closed early when it reaches this size |
+| `keyframe_seconds` | 10 | How often to ask the game for a keyframe. 0 turns it off |
+| `compression` | `zstd` | `zstd`, `deflate`, `gzip`, `fastlz` or `none` |
+| `max_file_mib` | 512 | A replay is finished cleanly at this size. 0 is unlimited |
+| `max_record_kib` | 1024 | A single record larger than this is refused |
+| `ring_seconds` | 60 | How much recent play is kept in memory for clips. 0 turns it off |
+| `ring_max_mib` | 32 | The most memory the clip buffer may use |
 
-[dot-core](https://github.com/modcommunity/dot-core). Nothing else.
+## Testing
 
-## Licence
+```bash
+godot --headless --path . --import
+godot --headless --path . res://examples/replay_selftest.tscn
+```
 
+## License
 MIT. See [LICENSE](LICENSE).
