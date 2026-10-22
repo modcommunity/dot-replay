@@ -51,7 +51,7 @@ func cli_prefix() -> String:
 const CFG_ADDON := "dot-replay"
 
 
-## Applies [param file_name] from `cfg/addons/dot_replay/`, then the operator's `cfg/server/dot_replay/`.
+## Applies [param file_name] from `cfg/addons/dot_replay/`, then the operator's `cfg/server/addons/dot_replay/`.
 ## A flat [param legacy_dir]/[param file_name] is still read (one WARN) while no new copy exists.
 ## Keys not starting `replay_` belong to the deployment and are skipped; secrets stay file-only.
 func apply_cfg_file(file_name: String = "replay.yml", legacy_dir: String = "res://cfg") -> DotResult:
