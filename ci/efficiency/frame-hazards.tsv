@@ -1,0 +1,3 @@
+# frame-hazards
+# Baselines only shrink: scripts/<gate> --update lowers or drops entries and refuses to add.
+addons/dot_replay/runtime/dot_replay_player.gd::_load_chunk::string_build	1
