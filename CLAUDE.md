@@ -30,6 +30,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `bridge/dot_replay_event_tap.gd` | `DotReplayEventTap`: a dot-server event bus's `event_fired`, objects replaced by `describe()` |
 | `bridge/dot_replay_net_tap.gd` | `DotReplayNetTap`: wraps a dot-net manager's `send_fn` for one peer |
 | `examples/replay_selftest.tscn` | the suite; files only under `user://dot_replay_selftest`, emptied first |
+| `examples/cfg_selftest.tscn` | `replay.yml` through `DotReplayConfig.load_cfg`: `cfg/addons/dot_replay/`, `cfg/server/dot_replay/` over it, the flat `cfg/replay.yml` shim (WARN once, removed 2026-12-31) |
 
 Paths except `examples/` are in `addons/dot_replay/`.
 
