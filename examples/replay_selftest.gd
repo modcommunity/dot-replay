@@ -16,8 +16,8 @@ extends Node
 ## godot --headless --path . res://examples/replay_selftest.tscn
 ## [/codeblock]
 
-const SECTIONS := 11
-const CHECKS := 102
+const SECTIONS := 12
+const CHECKS := 111
 
 const DIR := "user://dot_replay_selftest"
 
@@ -84,6 +84,7 @@ func _run() -> void:
 	_test_timing()
 	_test_taps_and_filter()
 	_test_limits()
+	_test_user_cfg()
 
 	_line("")
 	_line("%d sections, %d passed, %d failed" % [_section_count, _passed, _failed])
@@ -873,6 +874,55 @@ func _clean_dir() -> void:
 		return
 	for file_name in d.get_files():
 		d.remove(file_name)
+
+
+# --- 12 ---------------------------------------------------------------------
+
+func _test_user_cfg() -> void:
+	_section("replay.yml: defaults, file, user tier, schema")
+	var base := "user://cfg/addons/dot_replay"
+	var user := "user://cfg/user/addons/dot_replay"
+	DotPaths.remove_tree(base)
+	DotPaths.remove_tree(user)
+	DotAddonConfig.set_user_tier(false)
+
+	var c := DotReplayConfig.new()
+	_check(c.load_cfg("replay.yml", "").ok and c.ring_seconds == 60.0 and c.keyframe_seconds == 10.0 and c.compression == "zstd", "no file: the exported defaults")
+
+	DirAccess.make_dir_recursive_absolute(base)
+	var f := FileAccess.open(base.path_join("replay.yml"), FileAccess.WRITE)
+	f.store_string("replay_ring_seconds: 120.0\nreplay_compression: gzip\n")
+	f.close()
+	c = DotReplayConfig.new()
+	_check(c.load_cfg("replay.yml", "").ok and c.ring_seconds == 120.0 and c.compression == "gzip", "the file overrides the defaults")
+
+	var entry := DotReplayConfig.user_cfg_entry()
+	DotAddonConfig.set_user_tier(true)
+	var saved := DotAddonConfig.save_user("dot-replay", "replay.yml", {"replay_ring_seconds": 200.0}, entry["schema"])
+	_check(saved.ok, "a player's value inside the range is saved")
+	c = DotReplayConfig.new()
+	_check(c.load_cfg("replay.yml", "").ok and c.ring_seconds == 200.0 and c.compression == "gzip", "the user tier wins over the file, other keys stay")
+
+	DotAddonConfig.set_user_tier(false)
+	c = DotReplayConfig.new()
+	_check(c.load_cfg("replay.yml", "").ok and c.ring_seconds == 120.0, "with the tier off the player's file is ignored")
+
+	DotAddonConfig.set_user_tier(true)
+	var bad := DotAddonConfig.save_user("dot-replay", "replay.yml", {"replay_ring_seconds": 99999.0}, entry["schema"])
+	_check(not bad.ok and bad.code() == DotError.CODE_INVALID, "the schema refuses an out-of-range value")
+	var bad2 := DotAddonConfig.save_user("dot-replay", "replay.yml", {"replay_compression": "lzma"}, entry["schema"])
+	_check(not bad2.ok, "and an unknown compression")
+
+	var names := []
+	for e in entry["schema"]:
+		names.append(e["name"])
+	_check(entry["addon"] == "dot-replay" and entry["file"] == "replay.yml" and entry["label"] != "" and names == ["replay_ring_seconds", "replay_keyframe_seconds", "replay_compression"], "the entry has addon, file, label and the three fields")
+	_check(entry["schema"][0]["max"] == 3600.0 and entry["schema"][1]["max"] == 600.0, "ranges come from the exports")
+
+	DotAddonConfig.set_user_tier(false)
+	DotPaths.remove_tree(base)
+	DotPaths.remove_tree(user)
+	_done()
 
 
 func _section(title: String) -> void:

@@ -1,0 +1,14 @@
+# Copy to cfg/addons/dot_replay/replay.yml.
+# dot-replay settings. Every key is optional; what is shown is the default.
+# Layers, weakest first: this file, cfg/server/addons/dot_replay/replay.yml, then the
+# player's own user://cfg/user/addons/dot_replay/replay.yml (solo or listen-host only).
+# Environment (DOT_REPLAY_*) and command line (--replay-*) win over all files.
+
+# Seconds of recent match kept in memory for "save that" (0 turns it off, max 3600).
+replay_ring_seconds: 60.0
+
+# Seconds between keyframes; seeking replays at most this much (0 = none, max 600).
+replay_keyframe_seconds: 10.0
+
+# zstd, deflate, gzip, fastlz or none.
+replay_compression: zstd

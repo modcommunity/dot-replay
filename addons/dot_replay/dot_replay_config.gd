@@ -58,6 +58,25 @@ func apply_cfg_file(file_name: String = "replay.yml", legacy_dir: String = "res:
 	return DotAddonConfig.apply_file(CFG_ADDON, file_name, legacy_dir, _apply_cfg_values)
 
 
+## The tunables a player may change, as the `user_cfg_files` entry a game appends
+## (`platform.user_cfg_files.append(DotReplayConfig.user_cfg_entry())`). Keys carry the `replay_`
+## prefix the file uses; ranges come from the exports so the editor and the config never disagree.
+static func user_cfg_entry() -> Dictionary:
+	var probe := DotReplayConfig.new()
+	var schema: Array = []
+	for prop in ["ring_seconds", "keyframe_seconds"]:
+		var opts := {}
+		for info in probe.get_property_list():
+			if info["name"] == prop and info["hint"] == PROPERTY_HINT_RANGE:
+				var parts := String(info["hint_string"]).split(",")
+				opts = {"min": float(parts[0]), "max": float(parts[1])}
+		schema.append(DotProfileSet.field("replay_" + prop, "float", probe.get(prop), opts))
+	schema.append(DotProfileSet.field(
+		"replay_compression", "string", probe.compression, {"enum": ["zstd", "deflate", "gzip", "fastlz", "none"]}
+	))
+	return {"addon": CFG_ADDON, "file": "replay.yml", "schema": schema, "label": "Replays"}
+
+
 func _apply_cfg_values(values: Dictionary, path: String) -> PackedStringArray:
 	var own := {}
 	var keys := config_keys()
