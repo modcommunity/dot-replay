@@ -62,7 +62,7 @@ func apply_cfg_file(file_name: String = "replay.yml", legacy_dir: String = "res:
 ## (`platform.user_cfg_files.append(DotReplayConfig.user_cfg_entry())`). Keys carry the `replay_`
 ## prefix the file uses; ranges come from the exports so the editor and the config never disagree.
 static func user_cfg_entry() -> Dictionary:
-	var probe := DotReplayConfig.new()
+	var probe := new()
 	var schema: Array = []
 	for prop in ["ring_seconds", "keyframe_seconds"]:
 		var opts := {}
