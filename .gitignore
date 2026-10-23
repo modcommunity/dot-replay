@@ -17,3 +17,7 @@ Thumbs.db
 
 # Editors
 .vscode/
+
+# Only examples/net_selftest needs dot-net (the one check that runs the net tap against it):
+#   ln -s ../../dot-net/addons/dot_net addons/dot_net
+/addons/dot_net

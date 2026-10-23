@@ -51,7 +51,7 @@ dot-net deltas each peer's snapshots against what that peer acknowledged and cul
 
 ## Where it runs for real
 
-dot-server-deploy's host (`TmcReplay`) keeps a ring of every server's event bus through `DotReplayEventTap`, with a roster keyframe, and saves it for an admin or a punishment. `DotReplayNetTap` has been checked only against a stand-in of dot-net's shape; no game records through it yet.
+dot-server-deploy's host (`TmcReplay`) keeps a ring of every server's event bus through `DotReplayEventTap`, with a roster keyframe, and saves it for an admin or a punishment. `DotReplayNetTap` is checked against a real dot-net server by `examples/net_selftest` (record, replay into a fresh client, same count, order and payload hash, a client joining mid-stream); no game records through it yet.
 
 ## The killcam is a separate buffer
 
