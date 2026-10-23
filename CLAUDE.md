@@ -26,11 +26,16 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `runtime/dot_replay_recorder.gd` | `DotReplayRecorder`: `advance` / `record` / `record_value` / `keyframe` / `stop` / `save_clip`; asks `keyframe_fn` |
 | `runtime/dot_replay_ring.gd` | `DotReplayRing`: the last N seconds, from a keyframe, capped in bytes; `save()` |
 | `runtime/dot_replay_player.gd` | `DotReplayPlayer`: a `Node`; `state_reset` / `record_played` / `seeked` / `finished`, 0.25x to 8x, `seek`, `step_ticks`, a channel filter, `now_fn` |
+| `runtime/dot_killcam_buffer.gd` | `DotKillcamBuffer`: a client's last seconds of decoded frames and events (kills), bounded by time, frames and events; `frames_between`, `sample`, `last_event` |
+| `runtime/dot_killcam.gd` | `DotKillcam`: a `Node` that replays the last kill from a buffer, 3.5 s before to 1 s after, slowed at the kill, inside `max_seconds` (0 disables); skippable; `advance` for tests |
+| `runtime/dot_killcam_banner.gd` | `DotKillcamBanner`: the letterbox bars, "FINAL KILLCAM", killer, weapon, progress and a skip button |
+| `dot_replay_api.gd` | the API level (2: the killcam) |
 | `dot_replay_config.gd` | `DotReplayConfig`: directory, chunk and keyframe sizes, compression, caps, ring; layered (`--replay-ring-seconds 300`) |
 | `bridge/dot_replay_event_tap.gd` | `DotReplayEventTap`: a dot-server event bus's `event_fired`, objects replaced by `describe()` |
 | `bridge/dot_replay_net_tap.gd` | `DotReplayNetTap`: wraps a dot-net manager's `send_fn` for one peer |
 | `examples/replay_selftest.tscn` | the suite; files only under `user://dot_replay_selftest`, emptied first |
 | `examples/replay.yml` | the documented example (defaults; copy to `cfg/addons/dot_replay/`, not shipped live so it cannot shadow the flat shim); `DotReplayConfig.user_cfg_entry()` is the `user_cfg_files` entry for the player tier |
+| `examples/killcam_selftest.tscn` | the killcam suite: the rewind's frames, the kill kept, slowed playback, the budget, a stalled stream, skip, disabled |
 | `examples/cfg_selftest.tscn` | `replay.yml` through `DotReplayConfig.load_cfg`: `cfg/addons/dot_replay/`, `cfg/server/addons/dot_replay/` over it, the flat `cfg/replay.yml` shim (WARN once, removed 2026-12-31) |
 
 Paths except `examples/` are in `addons/dot_replay/`.
@@ -50,6 +55,7 @@ The family's two steps ([game-dev/CLAUDE.md](../../CLAUDE.md#validating-anything
 - Ticks only move forward; a late record is refused, never sorted in. [design](docs/design.md#ticks-only-move-forward-and-late-records-are-refused)
 - Every flushed chunk under `user://` calls `DotWeb.sync_filesystem()`. [design](docs/design.md#smaller-decisions)
 - The net tap records one observer peer; seeking its stream depends on the game's `keyframe_fn`. [design](docs/design.md#the-net-tap-records-one-peer-and-does-not-solve-seeking)
+- The killcam buffer holds what a client already drew, never a new stream, and is the game's to fill; the game decides what a frame is. [design](docs/design.md#the-killcam-is-a-separate-buffer)
 - An integrity check needs a case only it can catch: the transplant check is what fails without the chain. [history](docs/history.md#a-chain-nothing-tested)
 
 ## Open items

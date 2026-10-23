@@ -53,6 +53,10 @@ dot-net deltas each peer's snapshots against what that peer acknowledged and cul
 
 dot-server-deploy's host (`TmcReplay`) keeps a ring of every server's event bus through `DotReplayEventTap`, with a roster keyframe, and saves it for an admin or a punishment. `DotReplayNetTap` has been checked only against a stand-in of dot-net's shape; no game records through it yet.
 
+## The killcam is a separate buffer
+
+A final killcam replays a client's last few seconds, so it needs decoded frames it can interpolate between and step through slowly, not the opaque, tick-stamped and compressed records `DotReplayRing` keeps for evidence. `DotKillcamBuffer` holds Dictionaries the game builds from what it already drew (no new traffic, no threads, nothing written), bounded by seconds, a frame count and an event count, and keeps one frame at or before the window's start so a rewind to the start can still interpolate. `DotKillcam` never knows what a frame contains: it emits `frame_drawn` with the two frames around the instant and an alpha, and the game places its bodies and camera. It waits up to `post_seconds + 0.5` for the second after the kill to arrive, then plays what it has, and shortens the rewind, never the kill, to fit `max_seconds`, so a server that adds the killcam to its end-of-match wait never waits on a client.
+
 ## Deliberately not here
 
 - **A replacement for `DotTimerReplay`.** A record run wants quantised movement for one body and a small file a browser can fetch before the map loads; a match demo wants opaque channels. Both stay.
