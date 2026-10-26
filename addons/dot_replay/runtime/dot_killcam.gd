@@ -2,12 +2,8 @@ class_name DotKillcam
 extends Node
 
 ## A killcam: replays a [DotKillcamBuffer] around one kill, slowed at the moment, skippable.
-##
-## The node owns the clock and the banner; it draws nothing in the world. Every frame it emits
-## [signal frame_drawn] with the buffer's sample for the replayed instant, and the game places
-## its bodies and camera from that (it alone knows what a frame holds). [method play] may come
-## before the frames after the kill exist: it waits, up to [member post_seconds] and a margin,
-## for the buffer to catch up, so a match that ends on the kill still shows what followed.
+## Owns the clock, draws nothing: each frame emits [signal frame_drawn] with the buffer's sample.
+## [method play] may precede the post-kill frames; it waits up to [member post_seconds] plus a margin.
 
 const CHANNEL := "replay"
 

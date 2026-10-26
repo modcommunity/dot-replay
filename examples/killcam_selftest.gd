@@ -2,10 +2,6 @@ extends Node
 
 ## DotKillcamBuffer and DotKillcam: the rewind picks the right frames, the kill is kept, the
 ## replay is slowed at the kill and bounded, a skip or a disabled killcam ends it at once.
-##
-## [codeblock]
-## godot --headless --path . res://examples/killcam_selftest.tscn
-## [/codeblock]
 
 const SECTIONS := 4
 const CHECKS := 39

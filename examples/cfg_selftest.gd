@@ -1,10 +1,6 @@
 extends Node
 
 ## The yml layout of dot-replay's settings: new path, flat shim, operator layer.
-##
-## [codeblock]
-## timeout 120 godot --headless --path . res://examples/cfg_selftest.tscn
-## [/codeblock]
 
 const FOLDER := "dot_replay"
 const FILE := "replay.yml"

@@ -2,11 +2,7 @@ class_name DotKillcamBuffer
 extends RefCounted
 
 ## The last few seconds of what a client drew, in memory, for a killcam: timed frames and events.
-##
-## Frames and event data are opaque Dictionaries the game fills from what it already receives;
-## the buffer orders them, bounds them by seconds and count, and samples between two frames.
-## Decoded and uncompressed on purpose: [DotReplayRing] keeps sealed chunks for a file, and a
-## killcam wants any instant of the last five seconds at once, every frame.
+## Opaque Dictionaries, ordered and bounded here; uncompressed so any instant samples cheaply.
 
 const CHANNEL := "replay"
 

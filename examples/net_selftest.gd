@@ -3,10 +3,6 @@ extends Node
 ## Runs DotReplayNetTap against a real dot-net server and clients in one process, records a
 ## short session, plays it back into a fresh client and compares it with what was sent.
 ## Needs dot-net linked (see .gitignore); every other suite here runs without it.
-##
-## [codeblock]
-## godot --headless --path . res://examples/net_selftest.tscn
-## [/codeblock]
 
 const SECTIONS := 1
 const CHECKS := 16
@@ -178,6 +174,13 @@ func _test_real_stream() -> void:
 	_check(same, "peer, delivery and tick of every record match the send, in order")
 	_check(not got.is_empty() and _digest(got) == _digest(want), "the recorded payload hash equals the hash of what was sent")
 
+	_check_replay_into_fresh(seen, entity, moved, f, expected, want)
+	_check_mid_stream_joiner(entity, moved, f, expected)
+	_finished += 1
+
+
+func _check_replay_into_fresh(seen: DotNetManager, entity: DotNetIdentity, moved: Mover, f: DotReplayFile,
+		expected: Array, want: Array) -> void:
 	# Replay from the first record into a fresh client that has the entity.
 	var fresh := _manager(false, OBSERVER, "nt_replayed")
 	var _f := fresh.spawner.spawn_remote(&"mover", entity.net_id, 0, Transform3D.IDENTITY, 0)
@@ -202,6 +205,9 @@ func _test_real_stream() -> void:
 		"a fresh client fed the replay ends where the live observer did (%s, health %d)" % [final.position, final.health])
 	_check(final.position.distance_to(moved.position) < 0.05, "and where the server was")
 
+
+
+func _check_mid_stream_joiner(entity: DotNetIdentity, moved: Mover, f: DotReplayFile, expected: Array) -> void:
 	# A client joining the playback mid-stream sees only the tail, which must be the sent tail.
 	var tail: Array = []
 	var joiner := _manager(false, OBSERVER, "nt_joiner")
@@ -229,7 +235,6 @@ func _test_real_stream() -> void:
 	print("   info  mid-stream joiner applied %d snapshots, ends at %s (server %s)" % [tail_applied[0], joined.position, moved.position])
 	_check(tail_applied[0] > 0 and joined.position.distance_to(moved.position) < 0.05,
 		"and it decodes to the live state (the server acks deltas from the observer's baseline)")
-	_finished += 1
 
 
 func _check(condition: bool, what: String) -> void:
