@@ -18,9 +18,13 @@ const DEFAULT_LAYER := 90
 var title_label: Label = null
 var killer_label: Label = null
 var detail_label: Label = null
+var icon_rect: TextureRect = null
 var hint_label: Label = null
 var skip_button: Button = null
 var progress_bar: ColorRect = null
+
+## Weapon id -> Texture2D or null; null hides the icon. Assign to show a picture beside the weapon name.
+var icon_provider: Callable = Callable()
 
 var _root: Control = null
 var _top: Control = null
@@ -37,7 +41,7 @@ func _ready() -> void:
 	_build()
 
 
-## Shows the banner for {title, killer, victim, weapon, hint}; missing keys get defaults.
+## Shows the banner for {title, killer, victim, weapon, weapon_id, hint}; missing keys get defaults. `weapon_id` (default `weapon`) is what [member icon_provider] is asked.
 func present(info: Dictionary) -> void:
 	_build()
 	title_label.text = String(info.get("title", "FINAL KILLCAM"))
@@ -47,6 +51,11 @@ func present(info: Dictionary) -> void:
 	detail_label.text = "  ".join(PackedStringArray([
 		"[%s]" % weapon if weapon != "" else "", "killed %s" % victim if victim != "" else "",
 	])).strip_edges()
+	var icon: Texture2D = null
+	if icon_provider.is_valid() and weapon != "":
+		icon = icon_provider.call(String(info.get("weapon_id", weapon))) as Texture2D
+	icon_rect.texture = icon
+	icon_rect.visible = icon != null
 	hint_label.text = String(info.get("hint", "Space / Esc to skip"))
 	set_progress(0.0)
 	visible = true
@@ -123,11 +132,23 @@ func _build() -> void:
 	killer_label.anchor_top = 0.12
 	killer_label.anchor_bottom = 0.6
 	killer_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	detail_label = _label(_bottom, 18, Color(1, 1, 1, 0.75))
-	detail_label.anchor_left = 0.04
-	detail_label.anchor_right = 0.7
-	detail_label.anchor_top = 0.6
-	detail_label.anchor_bottom = 0.92
+	var detail_row := HBoxContainer.new()
+	detail_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	detail_row.anchor_left = 0.04
+	detail_row.anchor_right = 0.7
+	detail_row.anchor_top = 0.6
+	detail_row.anchor_bottom = 0.92
+	_bottom.add_child(detail_row)
+	icon_rect = TextureRect.new()
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_rect.custom_minimum_size = Vector2(64, 0)
+	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon_rect.visible = false
+	detail_row.add_child(icon_rect)
+	detail_label = _label(detail_row, 18, Color(1, 1, 1, 0.75))
+	detail_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 	hint_label = _label(_bottom, 15, Color(1, 1, 1, 0.6))
 	hint_label.anchor_left = 0.6

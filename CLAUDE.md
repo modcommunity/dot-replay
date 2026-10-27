@@ -28,7 +28,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `runtime/dot_replay_player.gd` | `DotReplayPlayer`: a `Node`; `state_reset` / `record_played` / `seeked` / `finished`, 0.25x to 8x, `seek`, `step_ticks`, a channel filter, `now_fn` |
 | `runtime/dot_killcam_buffer.gd` | `DotKillcamBuffer`: a client's last seconds of decoded frames and events (kills), bounded by time, frames and events; `frames_between`, `sample`, `last_event` |
 | `runtime/dot_killcam.gd` | `DotKillcam`: a `Node` that replays the last kill from a buffer, 3.5 s before to 1 s after, slowed at the kill, inside `max_seconds` (0 disables); skippable; `advance` for tests |
-| `runtime/dot_killcam_banner.gd` | `DotKillcamBanner`: the letterbox bars, "FINAL KILLCAM", killer, weapon, progress and a skip button |
+| `runtime/dot_killcam_banner.gd` | `DotKillcamBanner`: the letterbox bars, "FINAL KILLCAM", killer, weapon (and a picture when `icon_provider`, a weapon id -> Texture2D Callable, gives one), progress and a skip button |
 | `dot_replay_api.gd` | the API level (2: the killcam) |
 | `dot_replay_config.gd` | `DotReplayConfig`: directory, chunk and keyframe sizes, compression, caps, ring; layered (`--replay-ring-seconds 300`) |
 | `bridge/dot_replay_event_tap.gd` | `DotReplayEventTap`: a dot-server event bus's `event_fired`, objects replaced by `describe()` |

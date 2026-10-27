@@ -3,8 +3,8 @@ extends Node
 ## DotKillcamBuffer and DotKillcam: the rewind picks the right frames, the kill is kept, the
 ## replay is slowed at the kill and bounded, a skip or a disabled killcam ends it at once.
 
-const SECTIONS := 4
-const CHECKS := 39
+const SECTIONS := 5
+const CHECKS := 44
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -19,6 +19,7 @@ func _ready() -> void:
 	_test_playback()
 	_test_budget_and_stall()
 	_test_skip_and_disabled()
+	_test_icon()
 
 	print("")
 	print("%d sections, %d passed, %d failed" % [_section_count, _passed, _failed])
@@ -221,6 +222,35 @@ func _test_skip_and_disabled() -> void:
 	_check(not k.play(early, {"time": 10.0}).ok, "a kill from before the buffer is refused")
 	_check(not k.play(b, {}).ok, "as is no kill at all")
 	k.free()
+	_done()
+
+
+func _test_icon() -> void:
+	_section("A weapon icon sits beside the weapon name when a provider gives one")
+	var b := DotKillcamBuffer.new()
+	_fill(b, 0.0, 10.0)
+	b.note_event(10.0, &"kill", {"killer": 3})
+	var kill := b.last_event(&"kill")
+	var tex := ImageTexture.create_from_image(Image.create(4, 4, false, Image.FORMAT_RGBA8))
+	var asked: Array = []
+	var plain := _killcam(b)
+	var _p := plain.play(b, kill, {"killer": "A", "weapon": "Rifle"})
+	_check(not plain.banner.icon_rect.visible and plain.banner.detail_label.text.contains("Rifle"),
+		"no provider: text only, as before")
+	var k := DotKillcam.new()
+	k.auto_process = false
+	k.icon_provider = func(id: String) -> Texture2D:
+		asked.append(id)
+		return tex if id == "rifle" else null
+	add_child(k)
+	var _r := k.play(b, kill, {"killer": "A", "weapon": "Rifle", "weapon_id": "rifle"})
+	_check(k.banner.icon_rect.visible and k.banner.icon_rect.texture == tex and asked == ["rifle"],
+		"the provider is asked the weapon id and its texture is shown")
+	_check(k.banner.detail_label.text.contains("Rifle"), "the name stays beside it")
+	k.banner.present({"killer": "A", "weapon": "Sword", "weapon_id": "sword"})
+	_check(not k.banner.icon_rect.visible and k.banner.icon_rect.texture == null, "a null from the provider hides the icon")
+	k.banner.present({"killer": "A", "weapon": "rifle"})
+	_check(k.banner.icon_rect.visible and asked.back() == "rifle", "without weapon_id the weapon is the id")
 	_done()
 
 

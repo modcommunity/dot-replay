@@ -46,6 +46,9 @@ signal finished(skipped: bool)
 ## What is shown over the replay. Assign one of your own before [method play] to restyle it.
 var banner: DotKillcamBanner = null
 
+## Weapon id -> Texture2D or null, handed to the banner it builds; null keeps the text only.
+var icon_provider: Callable = Callable()
+
 var buffer: DotKillcamBuffer = null
 var state: State = State.IDLE
 
@@ -104,6 +107,7 @@ func play(p_buffer: DotKillcamBuffer, kill: Dictionary, info: Dictionary = {}) -
 	if show_banner:
 		if banner == null:
 			banner = DotKillcamBanner.new()
+			banner.icon_provider = icon_provider
 			add_child(banner)
 		banner.skip_pressed.connect(skip, CONNECT_ONE_SHOT)
 	if banner != null:
