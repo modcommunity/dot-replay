@@ -29,7 +29,11 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `runtime/dot_killcam_buffer.gd` | `DotKillcamBuffer`: a client's last seconds of decoded frames and events (kills), bounded by time, frames and events; `frames_between`, `sample`, `last_event` |
 | `runtime/dot_killcam.gd` | `DotKillcam`: a `Node` that replays the last kill from a buffer, 3.5 s before to 1 s after, slowed at the kill, inside `max_seconds` (0 disables); skippable; `advance` for tests |
 | `runtime/dot_killcam_banner.gd` | `DotKillcamBanner`: the letterbox bars, "FINAL KILLCAM", killer, weapon (and a picture when `icon_provider`, a weapon id -> Texture2D Callable, gives one), progress and a skip button |
-| `dot_replay_api.gd` | the API level (2: the killcam) |
+| `core/dot_killview_rules.gd` | `DotKillViewRules`: the kill-view policy as `mp_killview*` cvars (`bind_cvars`, `follow_cvars`, `set_cvar`) |
+| `runtime/dot_killview_ring.gd` | `DotKillViewRing`: server; per-entity ring of view samples (nothing while off), `note_kill` / `collect` / `clip_for` |
+| `runtime/dot_killview_clip.gd` | `DotKillViewClip`: a clip as a `DotKillcamBuffer`; `view_at(sample)` |
+| `runtime/dot_killview_player.gd` | `DotKillViewPlayer`: client; plays a clip through `DotKillcam`; `view` / `finished` / `respawn_requested` |
+| `dot_replay_api.gd` | the API level (3: the kill view) |
 | `dot_replay_config.gd` | `DotReplayConfig`: directory, chunk and keyframe sizes, compression, caps, ring; layered (`--replay-ring-seconds 300`) |
 | `bridge/dot_replay_event_tap.gd` | `DotReplayEventTap`: a dot-server event bus's `event_fired`, objects replaced by `describe()` |
 | `bridge/dot_replay_net_tap.gd` | `DotReplayNetTap`: wraps a dot-net manager's `send_fn` for one peer |
@@ -37,6 +41,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `examples/replay.yml` | the documented example (defaults; copy to `cfg/addons/dot_replay/`, not shipped live so it cannot shadow the flat shim); `DotReplayConfig.user_cfg_entry()` is the `user_cfg_files` entry for the player tier |
 | `examples/net_selftest.tscn` | the net tap against a real dot-net server and clients: record, replay into a fresh client, counts, order, payload hash, a mid-stream joiner (16 checks; needs `ln -s ../../dot-net/addons/dot_net addons/dot_net`, gitignored) |
 | `examples/killcam_selftest.tscn` | the killcam suite: the rewind's frames, the kill kept, slowed playback, the budget, a stalled stream, skip, disabled |
+| `examples/killview_selftest.tscn` | the kill view: off records nothing, a bot's view cut into a clip, playback slowed, skip action respawns, cvars |
 | `examples/cfg_selftest.tscn` | `replay.yml` through `DotReplayConfig.load_cfg`: `cfg/addons/dot_replay/`, `cfg/server/addons/dot_replay/` over it, the flat `cfg/replay.yml` shim (WARN once, removed 2026-12-31) |
 
 Paths except `examples/` are in `addons/dot_replay/`.

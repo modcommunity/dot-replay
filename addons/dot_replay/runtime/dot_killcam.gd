@@ -37,6 +37,9 @@ signal finished(skipped: bool)
 ## Input actions that skip it; any one pressed skips.
 @export var skip_actions: PackedStringArray = PackedStringArray(["ui_cancel", "ui_accept"])
 
+## Whether the player may skip (input or the banner's button); off hides the button.
+@export var skip_allowed: bool = true
+
 ## Advance in [method _process]; off for a test that calls [method advance] itself.
 @export var auto_process: bool = true
 
@@ -72,7 +75,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	for action in skip_actions:
 		if InputMap.has_action(action) and event.is_action_pressed(action):
 			get_viewport().set_input_as_handled()
-			skip()
+			request_skip()
 			return
 
 
@@ -109,9 +112,11 @@ func play(p_buffer: DotKillcamBuffer, kill: Dictionary, info: Dictionary = {}) -
 			banner = DotKillcamBanner.new()
 			banner.icon_provider = icon_provider
 			add_child(banner)
-		banner.skip_pressed.connect(skip, CONNECT_ONE_SHOT)
+		banner.skip_pressed.connect(request_skip, CONNECT_ONE_SHOT)
 	if banner != null:
 		banner.present(info)
+		if banner.skip_button != null:
+			banner.skip_button.visible = skip_allowed
 	DotLog.debug(CHANNEL, "killcam waiting for the frames after the kill", {"kill_time": kill_time})
 	_try_start()
 	return DotResult.success()
@@ -130,6 +135,12 @@ func advance(delta: float) -> void:
 	_emit_frame()
 	if _pos >= _to or _elapsed >= max_seconds:
 		_finish(false)
+
+
+## A player's skip: honoured only while [member skip_allowed].
+func request_skip() -> void:
+	if skip_allowed:
+		skip()
 
 
 func skip() -> void:
@@ -203,8 +214,8 @@ func _emit_frame() -> void:
 func _finish(skipped: bool) -> void:
 	state = State.IDLE
 	if banner != null:
-		if banner.skip_pressed.is_connected(skip):
-			banner.skip_pressed.disconnect(skip)
+		if banner.skip_pressed.is_connected(request_skip):
+			banner.skip_pressed.disconnect(request_skip)
 		banner.dismiss()
 	DotLog.debug(CHANNEL, "killcam over", {"skipped": skipped})
 	finished.emit(skipped)
