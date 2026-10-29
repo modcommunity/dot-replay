@@ -55,3 +55,32 @@ static func view_at(sample: Dictionary) -> Dictionary:
 		"cursor": cursor,
 		"has_cursor": (a["cur"] as Vector2).x >= 0.0,
 	}
+
+
+## A clip and its info as one event body of at most [param max_bytes]; a long clip is thinned
+## (every other sample, again) rather than refused.
+static func pack(clip: Dictionary, info: Dictionary, max_bytes: int = 15000) -> PackedByteArray:
+	var thin := clip.duplicate()
+	var flat: PackedFloat32Array = thin.get("f", PackedFloat32Array())
+	var stride := DotKillViewRing.STRIDE
+	var bytes := var_to_bytes({"clip": thin, "info": info})
+	while bytes.size() > max_bytes and flat.size() / stride > 4:
+		var kept := PackedFloat32Array()
+		for row in range(0, flat.size() / stride, 2):
+			kept.append_array(flat.slice(row * stride, (row + 1) * stride))
+		flat = kept
+		thin["f"] = flat
+		bytes = var_to_bytes({"clip": thin, "info": info})
+	return bytes
+
+
+## Reads a [method pack] body: {ok, clip, info}. Never decodes objects.
+static func unpack(body: PackedByteArray) -> Dictionary:
+	var out := {"ok": false, "clip": {}, "info": {}}
+	var value: Variant = bytes_to_var(body) if not body.is_empty() else null
+	if value is Dictionary and (value as Dictionary).get("clip") is Dictionary:
+		out["clip"] = (value as Dictionary)["clip"]
+		var info: Variant = (value as Dictionary).get("info", {})
+		out["info"] = info if info is Dictionary else {}
+		out["ok"] = true
+	return out

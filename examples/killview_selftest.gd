@@ -3,8 +3,8 @@ extends Node
 ## The kill view: nothing is recorded while off, a killer's view (a bot's too) is cut into a clip the
 ## victim plays slowed at the kill, Space skips and respawns, and the cvars drive all of it.
 
-const SECTIONS := 6
-const CHECKS := 58
+const SECTIONS := 8
+const CHECKS := 72
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -21,6 +21,8 @@ func _ready() -> void:
 	_test_skip()
 	_test_cvars()
 	_test_framing()
+	_test_server()
+	_test_client()
 
 	print("")
 	print("%d sections, %d passed, %d failed" % [_section_count, _passed, _failed])
@@ -267,6 +269,80 @@ func _test_framing() -> void:
 		player.advance(STEP)
 	_check(moments.size() >= 2 and moments[0] < 0.0 and moments[-1] > moments[0], "the player names each replayed instant relative to the kill")
 	player.queue_free()
+	_done()
+
+
+func _test_server() -> void:
+	_section("The server wrapper samples every eye, holds the victim's respawn and lets a skip release it")
+	var rules := _rules(true)
+	var server := DotKillViewServer.new(rules)
+	server.tick_rate = 60
+	var t := [0.0]
+	server.eyes_fn = func() -> Array:
+		return [{"id": 2, "transform": Transform3D(Basis(), Vector3(t[0], 1.6, 0.0))}, {"id": 1, "transform": Transform3D(), "fov": 90.0}]
+	var waiting := {1: 100}
+	var released := []
+	server.hold_fn = func(victim: Variant, until: int) -> int:
+		if not waiting.has(victim):
+			return -1
+		waiting[victim] = maxi(int(waiting[victim]), until)
+		return waiting[victim]
+	server.release_fn = func(victim: Variant) -> bool:
+		released.append(victim)
+		return waiting.erase(victim)
+	while t[0] <= 11.0:
+		server.record(t[0])
+		t[0] += STEP
+	_check(server.ring.sample_count(2) > 10 and server.ring.sample_count(1) > 10, "every eye the game names is recorded")
+	_check(server.note_kill(2, 1, 10.0, {"killer": "Two"}).ok, "the kill is noted")
+	var ready := server.collect(11.0, 660)
+	_check(ready.size() == 1 and ready[0]["victim"] == 1 and (ready[0]["info"] as Dictionary).get("killer") == "Two", "the clip goes to the victim with its info")
+	_check(server.is_held(1) and int(waiting[1]) > 660, "the victim's respawn is held past the clip (%d)" % int(waiting[1]))
+	_check(not server.skip(3, 661), "a player nobody holds cannot skip")
+	_check(server.skip(1, 661) and released == [1] and not server.is_held(1), "the victim's skip respawns them now")
+	_check(not server.skip(1, 662), "and only once")
+	var off := DotKillViewServer.new(_rules(false))
+	off.eyes_fn = server.eyes_fn
+	off.record(1.0)
+	_check(off.ring.entity_count() == 0, "off records nothing")
+	var body := DotKillViewClip.pack(ready[0]["clip"], ready[0]["info"], 600)
+	var back := DotKillViewClip.unpack(body)
+	_check(body.size() <= 600 and bool(back["ok"]) and DotKillViewClip.to_buffer(back["clip"]).ok, "a clip packs into a capped event body and back (%d bytes)" % body.size())
+	_check(not bool(DotKillViewClip.unpack(var_to_bytes([1, 2, 3]))["ok"]), "a bad body is refused")
+	_done()
+
+
+func _test_client() -> void:
+	_section("The client plays a clip on its own camera, hides the HUD, and gives the screen back")
+	var rules := _rules(true)
+	rules.camera = DotKillViewRules.Camera.EYE
+	var port := SubViewport.new()
+	add_child(port)
+	var previous := Camera3D.new()
+	port.add_child(previous)
+	previous.make_current()
+	var hud := Control.new()
+	port.add_child(hud)
+	var view := DotKillViewClient.new()
+	port.add_child(view)
+	view.setup(rules)
+	view.kv.auto_process = false
+	view.hide_fn = func() -> Array: return [hud]
+	var ended := []
+	view.over.connect(func(skipped: bool) -> void: ended.append(skipped))
+	var asked := [0]
+	view.respawn_requested.connect(func() -> void: asked[0] += 1)
+	_check(view.play(_clip(rules), {"killer": "Two"}), "a clip starts")
+	view.kv.advance(0.5)
+	view.kv.advance(0.5)
+	_check(view.camera.current and not hud.visible and view.crosshair.visible, "its camera is current, the HUD hidden, the crosshair drawn")
+	view.kv.killcam.skip()
+	_check(ended == [true] and asked[0] == 1 and previous.current and hud.visible and not view.crosshair.visible, "a skip asks for the respawn and restores everything")
+	var quiet := DotKillViewClient.new()
+	port.add_child(quiet)
+	quiet.setup(_rules(false))
+	_check(not quiet.play(_clip(rules), {}), "with the cvar off nothing plays")
+	port.queue_free()
 	_done()
 
 

@@ -4,20 +4,21 @@ When a player dies they see the replay of their killer's view (camera, fov and c
 
 ## The hook a game wires in
 
-Server (no autoloads; the game owns the nodes):
+Server (no autoloads; the game owns the objects):
 
-1. `var rules := DotKillViewRules.new()`, `rules.bind_cvars(module.add_cvar, DotServer.FLAG_REPLICATED)` (cvars below), `var ring := DotKillViewRing.new(rules)`.
-2. Each tick, for every player and bot with a camera: `ring.record(id, time, camera_transform, fov, crosshair_uv)`. Costs nothing while `mp_killview` is 0. `crosshair_uv` is 0..1 in the killer's viewport.
-3. On a kill: `ring.note_kill(killer_id, victim_id, time, {"killer": name, "weapon": weapon})`.
-4. Each tick: `for c in ring.collect(time): send(c["victim"], c["clip"])`. A clip is plain Variants, a `PackedFloat32Array` of about 11 floats per sample, a few KiB.
-5. On leave: `ring.forget(id)`.
+1. `var rules := DotKillViewRules.new()`, `rules.bind_cvars(module.add_cvar, DotConVar.FLAG_REPLICATED)` (cvars below). A client calls `rules.follow_cvars(client_link)`.
+2. `var kv := DotKillViewServer.new(rules)`, `kv.tick_rate = ...`, and assign `kv.eyes_fn`: `() -> [{id, transform, fov?, cursor?}]`, every living player's and bot's eye (`crosshair` 0..1 in the killer's viewport). With dot-match, `kv.use_respawn_queue(func(): return match.respawns, func(id): return game.respawn(id))` holds and releases respawns; otherwise assign `hold_fn` and `release_fn`.
+3. Each tick: `kv.record(time)`, then `for c in kv.collect(time, tick): send(c["victim"], DotKillViewClip.pack(c["clip"], c["info"], max_bytes))`. Costs nothing while `mp_killview` is 0. A clip is about 11 floats per sample, a few KiB; `pack` thins it to fit the event body.
+4. On a kill: `kv.note_kill(killer_id, victim_id, time, {"killer": name, "weapon": weapon})`. On the victim's respawn request: `kv.skip(victim_id, tick)`. On leave: `kv.forget(id)`.
 
 Client:
 
-1. `var rules := DotKillViewRules.new()`, `rules.follow_cvars(client_link)`; `var kv := DotKillViewPlayer.new(rules)`; add it to the tree.
-2. `kv.view.connect(func(transform, fov, cursor, has_cursor): ...)` puts the replay camera and crosshair.
-3. On the clip: `kv.play_clip(clip, {"killer": name, "weapon": weapon})`. Hide the normal death screen while `kv.is_active()`.
-4. `kv.finished(skipped)` resumes the respawn flow; `kv.respawn_requested` (or `kv.respawn_fn`) fires only on a skip: send the respawn request there.
+1. `var view := DotKillViewClient.new()`, add it to the tree, `view.setup(rules)`; `view.hide_fn = func(): return [hud, view_model]`.
+2. On the event: `var got := DotKillViewClip.unpack(body)`, then `view.play(got["clip"], {"killer": name, "weapon": shown_name, "victim_id": me})`. Hide the normal death screen while `view.is_active()`.
+3. `view.respawn_requested` fires only on a skip: send the respawn request there. `view.over(skipped)` resumes the flow.
+4. Optional `view.stage`: a final-killcam recorder with `buffer` (a `DotKillcamBuffer` holding `kill` events), `pose_at(time, killer, victim) -> {target}`, `restore_bodies()` and `world_mask`, so the bodies stand where they were and the behind camera frames the victim.
+
+The lower pieces (`DotKillViewRing`, `DotKillViewPlayer`) stay public for a game that draws its own camera.
 
 ## Cvars
 

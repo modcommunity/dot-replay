@@ -5,5 +5,6 @@ extends RefCounted
 # 1: before this file existed (absent reads as 1). 2: the killcam (DotKillcamBuffer, DotKillcam, DotKillcamBanner).
 # 3: the kill view: DotKillViewRules (mp_killview*), DotKillViewRing, DotKillViewClip, DotKillViewPlayer.
 # 4: DotKillcamFraming, mp_killview_camera (DotKillViewRules.camera), DotKillViewPlayer.moment.
-const LEVEL := 4
+# 5: DotKillViewServer, DotKillViewClient, DotKillViewClip.pack / unpack.
+const LEVEL := 5
 const OLDEST := 1
