@@ -3,8 +3,8 @@ extends Node
 ## DotKillcamBuffer and DotKillcam: the rewind picks the right frames, the kill is kept, the
 ## replay is slowed at the kill and bounded, a skip or a disabled killcam ends it at once.
 
-const SECTIONS := 5
-const CHECKS := 44
+const SECTIONS := 6
+const CHECKS := 51
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -20,6 +20,7 @@ func _ready() -> void:
 	_test_budget_and_stall()
 	_test_skip_and_disabled()
 	_test_icon()
+	_test_host()
 
 	print("")
 	print("%d sections, %d passed, %d failed" % [_section_count, _passed, _failed])
@@ -251,6 +252,68 @@ func _test_icon() -> void:
 	_check(not k.banner.icon_rect.visible and k.banner.icon_rect.texture == null, "a null from the provider hides the icon")
 	k.banner.present({"killer": "A", "weapon": "rifle"})
 	_check(k.banner.icon_rect.visible and asked.back() == "rifle", "without weapon_id the weapon is the id")
+	_done()
+
+
+class FakeBody extends Node3D:
+	var display_name := "Fake"
+
+
+func _test_host() -> void:
+	_section("DotKillcamHost records through the game's hooks, replays the last kill and puts the bodies back")
+	var killer := FakeBody.new()
+	var victim := FakeBody.new()
+	add_child(killer)
+	add_child(victim)
+	victim.position = Vector3(5.0, 0.0, 0.0)
+	var clock := [0.0]
+	var by_id := {&"k": killer, &"v": victim}
+	var h := DotKillcamHost.new()
+	h.no_id = &""
+	h.players_fn = func() -> Array: return [killer, victim]
+	h.player_for_fn = func(id: StringName) -> Variant: return by_id.get(id)
+	h.id_of_fn = func(p: Node) -> Variant: return &"k" if p == killer else &"v"
+	h.state_fn = func(p: Node) -> Array: return [(p as Node3D).position, 0.0, 0.0, true, 1.6]
+	h.place_body_fn = func(p: Node3D, feet: Vector3, _y: float, shown: bool, _pi: float, _sp: float, touched: Dictionary) -> void:
+		if not touched.has(p):
+			touched[p] = [p.position, p.visible]
+		p.visible = shown
+		p.position = feet
+	h.restore_body_fn = func(p: Node3D, saved: Array) -> void:
+		p.position = saved[0]
+		p.visible = saved[1]
+	h.now_fn = func() -> float: return clock[0]
+	h.seconds_fn = func() -> float: return 7.0
+	h.camera_mode_fn = func() -> int: return DotKillViewRules.Camera.EYE
+	h.can_play_fn = func(d: Dictionary) -> bool: return d["killer"] != d["victim"]
+	add_child(h)
+	h.killcam.auto_process = false
+	var ended: Array = []
+	h.over.connect(func(skipped: bool) -> void: ended.append(skipped))
+	while clock[0] < 9.5:
+		clock[0] += STEP
+		killer.position = Vector3(clock[0], 0.0, 0.0)
+		h.frame()
+		if absf(clock[0] - 8.0) < STEP * 0.5:
+			h.note_kill(&"k", &"v", "rifle")
+	_check(h.buffer.frame_count() > 400 and h.buffer.last_event(&"kill")["data"]["killer"] == &"k",
+		"frames and the kill (with StringName ids) went into the buffer")
+	_check(h.match_ended() and h.is_playing(), "the match's end starts the replay")
+	h.killcam.advance(STEP)
+	_check(h.camera.current and h.camera.global_position.y > 1.0, "the host's camera takes over at the killer's eye")
+	_check(not killer.visible and victim.visible, "the killer's body is hidden in the eye view, the victim's shown")
+	var n := 0
+	while h.is_playing() and n < 1000:
+		h.killcam.advance(STEP)
+		n += 1
+	_check(ended == [false] and h.touched.is_empty(), "it ends inside the budget and clears the moved bodies")
+	_check(is_equal_approx(killer.position.x, 9.5) and killer.visible, "and restore_body_fn put the killer back")
+	ended.clear()
+	h.note_kill(&"k", &"k", "rifle")
+	_check(not h.match_ended() and ended == [false], "can_play_fn refusing (a suicide) goes straight on")
+	h.queue_free()
+	killer.queue_free()
+	victim.queue_free()
 	_done()
 
 
