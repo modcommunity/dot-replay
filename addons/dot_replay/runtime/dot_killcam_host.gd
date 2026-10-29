@@ -14,6 +14,9 @@ var skip_actions: PackedStringArray = ["ui_cancel"]
 ## Shown under the banner.
 var skip_hint := "Jump to skip"
 
+## Optional policy (`mp_killview_final`, `mp_killview_skip_grace`); null shows the final killcam always.
+var rules: DotKillViewRules = null
+
 ## The id that means "nobody" (0 for int ids, &"" for names).
 var no_id: Variant = 0
 
@@ -120,6 +123,11 @@ func match_ended() -> bool:
 	if killcam == null or is_playing():
 		return is_playing()
 	killcam.max_seconds = maxf(float(seconds_fn.call()), 0.0)
+	if rules != null:
+		killcam.skip_grace = rules.skip_grace
+		if not rules.final_killcam:
+			over.emit(false)
+			return false
 	var kill := buffer.last_event(&"kill")
 	var killer_id: Variant = kill["data"].get("killer", no_id) if not kill.is_empty() else no_id
 	var killer: Node = _player(killer_id)

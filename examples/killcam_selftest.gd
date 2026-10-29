@@ -4,7 +4,7 @@ extends Node
 ## replay is slowed at the kill and bounded, a skip or a disabled killcam ends it at once.
 
 const SECTIONS := 6
-const CHECKS := 51
+const CHECKS := 52
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -199,6 +199,9 @@ func _test_skip_and_disabled() -> void:
 	var press := InputEventAction.new()
 	press.action = &"ui_cancel"
 	press.pressed = true
+	k._unhandled_input(press)
+	_check(ended.is_empty() and k.state != DotKillcam.State.IDLE, "a skip key inside the grace second is ignored")
+	k.advance(0.6)
 	k._unhandled_input(press)
 	_check(ended == [true] and k.state == DotKillcam.State.IDLE, "the skip action ends it, skipped")
 	_check(not k.banner.visible, "and takes the banner down")

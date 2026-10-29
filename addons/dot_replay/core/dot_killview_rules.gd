@@ -18,6 +18,8 @@ const CVAR_SKIP_ACTION := "mp_killview_skip_action"
 const CVAR_SLOWMO := "mp_killview_slowmo"
 const CVAR_HZ := "mp_killview_hz"
 const CVAR_CAMERA := "mp_killview_camera"
+const CVAR_FINAL := "mp_killview_final"
+const CVAR_SKIP_GRACE := "mp_killview_skip_grace"
 
 ## Where a killcam's camera sits: the killer's own eye, or behind the killer on a boom.
 enum Camera { EYE, BEHIND }
@@ -52,6 +54,12 @@ var record_hz: float = 30.0
 ## The killer's eye shows neither killer nor shot; behind the killer frames both, so it is the default.
 var camera: Camera = Camera.BEHIND
 
+## Whether the match's last kill is replayed before the summary.
+var final_killcam: bool = true
+
+## Seconds a replay ignores skip keys, so the fire or jump that ended the match does not skip it.
+var skip_grace: float = 1.0
+
 
 ## Frames kept per entity, from the longest clip asked for plus a second of slack.
 func history_seconds() -> float:
@@ -80,6 +88,10 @@ func cvar_specs() -> Array:
 			"description": "Killer view samples recorded per second"},
 		{"name": CVAR_CAMERA, "value": str(int(camera)), "min": 0.0, "max": 1.0,
 			"description": "Killcam camera: 0 the killer's eye, 1 behind the killer"},
+		{"name": CVAR_FINAL, "value": "1" if final_killcam else "0", "min": 0.0, "max": 1.0,
+			"description": "1 replays the match's last kill before the summary"},
+		{"name": CVAR_SKIP_GRACE, "value": str(skip_grace), "min": 0.0, "max": 5.0,
+			"description": "Seconds a replay ignores skip keys after it starts"},
 	]
 
 
@@ -144,6 +156,10 @@ func set_cvar(cvar_name: String, value: String) -> bool:
 			return _number(text, 0.05, 1.0, func(v: float) -> void: slowmo = v)
 		CVAR_HZ:
 			return _number(text, 5.0, 120.0, func(v: float) -> void: record_hz = v)
+		CVAR_FINAL:
+			return _flag(text, func(v: bool) -> void: final_killcam = v)
+		CVAR_SKIP_GRACE:
+			return _number(text, 0.0, 5.0, func(v: float) -> void: skip_grace = v)
 		CVAR_CAMERA:
 			return _flag(text, func(v: bool) -> void: camera = Camera.BEHIND if v else Camera.EYE)
 		_:
@@ -179,6 +195,7 @@ func describe() -> Dictionary:
 		"enabled": enabled, "seconds": seconds, "lead": lead_seconds, "post": post_seconds,
 		"cursor": include_cursor, "skip": skip_allowed, "skip_action": skip_action,
 		"slowmo": slowmo, "hz": record_hz, "camera": Camera.keys()[camera],
+		"final": final_killcam, "skip_grace": skip_grace,
 	}
 
 

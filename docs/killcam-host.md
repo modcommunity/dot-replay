@@ -32,5 +32,6 @@ Call `host.frame()` once a frame after the bodies are presented, `host.note_kill
 | `camera_mode_fn`, `world_mask` | behind, layer 1 | `DotKillViewRules.Camera` and the boom's mask |
 | `camera_cull_extra` | 0 | layers the camera also draws (a local body's layer) |
 | `weapon_name_fn`, `weapon_icon_fn`, `hide_while_playing`, `seconds_fn`, `now_fn` | see the script | banner, HUD hiding, length, a test clock |
+| `rules` | null | a `DotKillViewRules`: `mp_killview_final` 0 skips the final killcam, `mp_killview_skip_grace` ignores skip keys for the first seconds |
 
 `pose_at`, `restore_bodies`, `world_mask` and `buffer` are also what `DotKillViewClient.stage` expects, so the host is the kill view's stage as it stands.

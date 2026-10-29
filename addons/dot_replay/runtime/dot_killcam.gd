@@ -37,6 +37,9 @@ signal finished(skipped: bool)
 ## Input actions that skip it; any one pressed skips.
 @export var skip_actions: PackedStringArray = PackedStringArray(["ui_cancel", "ui_accept"])
 
+## Seconds after [method play] that skip keys are ignored (the banner's button still works).
+@export_range(0.0, 5.0, 0.1) var skip_grace: float = 1.0
+
 ## Whether the player may skip (input or the banner's button); off hides the button.
 @export var skip_allowed: bool = true
 
@@ -70,7 +73,7 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if state == State.IDLE or event.is_echo():
+	if state == State.IDLE or event.is_echo() or _elapsed < skip_grace:
 		return
 	for action in skip_actions:
 		if InputMap.has_action(action) and event.is_action_pressed(action):

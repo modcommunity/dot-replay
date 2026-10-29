@@ -57,6 +57,7 @@ func play_clip(clip: Dictionary, info: Dictionary = {}) -> DotResult:
 	killcam.slow_scale = rules.slowmo
 	killcam.skip_allowed = rules.skip_allowed
 	killcam.skip_actions = PackedStringArray([rules.skip_action])
+	killcam.skip_grace = rules.skip_grace
 	var shown := info.duplicate()
 	shown["title"] = shown.get("title", "KILL VIEW")
 	if not rules.skip_allowed:

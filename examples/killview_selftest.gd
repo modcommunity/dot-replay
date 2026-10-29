@@ -4,7 +4,7 @@ extends Node
 ## victim plays slowed at the kill, Space skips and respawns, and the cvars drive all of it.
 
 const SECTIONS := 8
-const CHECKS := 72
+const CHECKS := 74
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -157,6 +157,7 @@ func _skip_event(action: String) -> InputEventAction:
 func _test_skip() -> void:
 	_section("The skip action ends the replay and requests a respawn, unless skipping is off")
 	var rules := _rules(true)
+	rules.skip_grace = 0.0
 	var player := _player(rules)
 	var asked: Array = []
 	player.respawn_fn = func() -> void: asked.append(1)
@@ -171,6 +172,7 @@ func _test_skip() -> void:
 	_check(not player.is_active() and ends == [true], "the skip action ends it at once")
 	_check(asked.size() == 1, "and requests the respawn")
 
+	rules.skip_grace = 0.0
 	InputMap.add_action("kv_test_skip")
 	rules.skip_action = "kv_test_skip"
 	var _r2 := player.play_clip(_clip(rules))
@@ -239,6 +241,10 @@ func _test_framing() -> void:
 	var rules := DotKillViewRules.new()
 	_check(rules.camera == DotKillViewRules.Camera.BEHIND, "behind the killer is the default")
 	_check(rules.set_cvar("mp_killview_camera", "0") and rules.camera == DotKillViewRules.Camera.EYE, "mp_killview_camera 0 is the killer's eye")
+	_check(rules.final_killcam and rules.set_cvar("mp_killview_final", "0") and not rules.final_killcam,
+		"mp_killview_final turns the final killcam off, on by default")
+	_check(rules.skip_grace == 1.0 and rules.set_cvar("mp_killview_skip_grace", "0.5") and rules.skip_grace == 0.5
+		and not rules.set_cvar("mp_killview_skip_grace", "9"), "mp_killview_skip_grace is a bounded number")
 	var framing := DotKillcamFraming.new()
 	var eye := Transform3D(Basis(Vector3.UP, 0.7), Vector3(3.0, 1.6, -2.0))
 	var at_eye := framing.place(DotKillViewRules.Camera.EYE, eye, 75.0)
