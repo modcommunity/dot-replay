@@ -4,8 +4,6 @@ extends RefCounted
 ## The last few seconds of what a client drew, in memory, for a killcam: timed frames and events.
 ## Opaque Dictionaries, ordered and bounded here; uncompressed so any instant samples cheaply.
 
-const CHANNEL := "replay"
-
 ## How far back frames and events are kept, seconds.
 var window_seconds: float = 8.0
 
