@@ -3,8 +3,8 @@ extends Node
 ## The kill view: nothing is recorded while off, a killer's view (a bot's too) is cut into a clip the
 ## victim plays slowed at the kill, Space skips and respawns, and the cvars drive all of it.
 
-const SECTIONS := 5
-const CHECKS := 48
+const SECTIONS := 6
+const CHECKS := 56
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -20,6 +20,7 @@ func _ready() -> void:
 	_test_playback()
 	_test_skip()
 	_test_cvars()
+	_test_framing()
 
 	print("")
 	print("%d sections, %d passed, %d failed" % [_section_count, _passed, _failed])
@@ -228,6 +229,38 @@ func _test_cvars() -> void:
 	_check(not DotKillViewClip.view_at(buffer.sample(0.0))["has_cursor"], "and the replay draws no crosshair")
 	var flat: PackedFloat32Array = clip["f"]
 	_check(flat[9] == 0.0 and flat[10] == 0.0, "because the server never sent it")
+	_done()
+
+
+func _test_framing() -> void:
+	_section("The camera sits behind the killer by default, frames the victim, and the eye is a cvar away")
+	var rules := DotKillViewRules.new()
+	_check(rules.camera == DotKillViewRules.Camera.BEHIND, "behind the killer is the default")
+	_check(rules.set_cvar("mp_killview_camera", "0") and rules.camera == DotKillViewRules.Camera.EYE, "mp_killview_camera 0 is the killer's eye")
+	var framing := DotKillcamFraming.new()
+	var eye := Transform3D(Basis(Vector3.UP, 0.7), Vector3(3.0, 1.6, -2.0))
+	var at_eye := framing.place(DotKillViewRules.Camera.EYE, eye, 75.0)
+	_check(at_eye["transform"] == eye and at_eye["fov"] == 75.0, "the eye mode is the eye itself")
+	var victim := eye.origin - eye.basis.z * 8.0
+	var near := framing.place(DotKillViewRules.Camera.BEHIND, eye, 75.0, victim)
+	var cam: Transform3D = near["transform"]
+	var behind := (eye.origin - cam.origin).dot(-eye.basis.z)
+	_check(behind > 2.0 and cam.origin.distance_to(eye.origin) < 6.0, "behind mode is a few metres back of the eye (%.2f)" % behind)
+	var to_victim := (victim - cam.origin).normalized()
+	_check((-cam.basis.z).dot(to_victim) > 0.999, "looking at the victim")
+	var to_killer := (eye.origin - cam.origin).normalized()
+	_check((-cam.basis.z).dot(to_killer) > cos(deg_to_rad(float(near["fov"]) * 0.5)), "with the killer in the frame")
+	var far := framing.place(DotKillViewRules.Camera.BEHIND, eye, 75.0, eye.origin - eye.basis.z * 40.0)
+	_check(float(far["fov"]) < float(near["fov"]) and float(far["fov"]) >= framing.min_fov,
+		"a far victim narrows the lens (%.1f, near %.1f)" % [far["fov"], near["fov"]])
+	var player := _player(_rules(true))
+	var moments: Array[float] = []
+	player.moment.connect(func(t: float) -> void: moments.append(t))
+	var _p := player.play_clip(_clip(player.rules), {})
+	for _i in 120:
+		player.advance(STEP)
+	_check(moments.size() >= 2 and moments[0] < 0.0 and moments[-1] > moments[0], "the player names each replayed instant relative to the kill")
+	player.queue_free()
 	_done()
 
 

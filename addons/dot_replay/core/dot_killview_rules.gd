@@ -17,6 +17,10 @@ const CVAR_SKIP := "mp_killview_skip"
 const CVAR_SKIP_ACTION := "mp_killview_skip_action"
 const CVAR_SLOWMO := "mp_killview_slowmo"
 const CVAR_HZ := "mp_killview_hz"
+const CVAR_CAMERA := "mp_killview_camera"
+
+## Where a killcam's camera sits: the killer's own eye, or behind the killer on a boom.
+enum Camera { EYE, BEHIND }
 
 ## Off by default: nothing is recorded and no clip is built.
 var enabled: bool = false
@@ -45,6 +49,9 @@ var slowmo: float = 0.5
 ## Server view samples per second, per entity.
 var record_hz: float = 30.0
 
+## The killer's eye shows neither killer nor shot; behind the killer frames both, so it is the default.
+var camera: Camera = Camera.BEHIND
+
 
 ## Frames kept per entity, from the longest clip asked for plus a second of slack.
 func history_seconds() -> float:
@@ -71,6 +78,8 @@ func cvar_specs() -> Array:
 			"description": "Replay speed around the kill: 1 real time, 0.5 half speed"},
 		{"name": CVAR_HZ, "value": str(record_hz), "min": 5.0, "max": 120.0,
 			"description": "Killer view samples recorded per second"},
+		{"name": CVAR_CAMERA, "value": str(int(camera)), "min": 0.0, "max": 1.0,
+			"description": "Killcam camera: 0 the killer's eye, 1 behind the killer"},
 	]
 
 
@@ -135,6 +144,8 @@ func set_cvar(cvar_name: String, value: String) -> bool:
 			return _number(text, 0.05, 1.0, func(v: float) -> void: slowmo = v)
 		CVAR_HZ:
 			return _number(text, 5.0, 120.0, func(v: float) -> void: record_hz = v)
+		CVAR_CAMERA:
+			return _flag(text, func(v: bool) -> void: camera = Camera.BEHIND if v else Camera.EYE)
 		_:
 			return false
 	changed.emit()
@@ -167,14 +178,14 @@ func describe() -> Dictionary:
 	return {
 		"enabled": enabled, "seconds": seconds, "lead": lead_seconds, "post": post_seconds,
 		"cursor": include_cursor, "skip": skip_allowed, "skip_action": skip_action,
-		"slowmo": slowmo, "hz": record_hz,
+		"slowmo": slowmo, "hz": record_hz, "camera": Camera.keys()[camera],
 	}
 
 
 func describe_lines() -> PackedStringArray:
 	return PackedStringArray([
-		"killview: %s, %.1f s (%.1f before, %.1f after) at x%.2f, cursor %s, skip %s (%s), %.0f Hz" % [
+		"killview: %s, %.1f s (%.1f before, %.1f after) at x%.2f, cursor %s, skip %s (%s), %.0f Hz, camera %s" % [
 			"on" if enabled else "off", seconds, lead_seconds, post_seconds, slowmo,
-			include_cursor, skip_allowed, skip_action, record_hz,
+			include_cursor, skip_allowed, skip_action, record_hz, Camera.keys()[camera],
 		],
 	])
