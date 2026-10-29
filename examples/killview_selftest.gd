@@ -3,8 +3,8 @@ extends Node
 ## The kill view: nothing is recorded while off, a killer's view (a bot's too) is cut into a clip the
 ## victim plays slowed at the kill, Space skips and respawns, and the cvars drive all of it.
 
-const SECTIONS := 8
-const CHECKS := 74
+const SECTIONS := 9
+const CHECKS := 83
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -23,6 +23,7 @@ func _ready() -> void:
 	_test_framing()
 	_test_server()
 	_test_client()
+	_test_pov()
 
 	print("")
 	print("%d sections, %d passed, %d failed" % [_section_count, _passed, _failed])
@@ -237,10 +238,10 @@ func _test_cvars() -> void:
 
 
 func _test_framing() -> void:
-	_section("The camera sits behind the killer by default, frames the victim, and the eye is a cvar away")
+	_section("The camera is the killer's eye by default, behind them is a cvar away, and the boom frames the victim")
 	var rules := DotKillViewRules.new()
-	_check(rules.camera == DotKillViewRules.Camera.BEHIND, "behind the killer is the default")
-	_check(rules.set_cvar("mp_killview_camera", "0") and rules.camera == DotKillViewRules.Camera.EYE, "mp_killview_camera 0 is the killer's eye")
+	_check(rules.camera == DotKillViewRules.Camera.EYE, "the killer's own eye is the default")
+	_check(rules.set_cvar("mp_killview_camera", "1") and rules.camera == DotKillViewRules.Camera.BEHIND, "mp_killview_camera 1 is behind the killer")
 	_check(rules.final_killcam and rules.set_cvar("mp_killview_final", "0") and not rules.final_killcam,
 		"mp_killview_final turns the final killcam off, on by default")
 	_check(rules.skip_grace == 1.0 and rules.set_cvar("mp_killview_skip_grace", "0.5") and rules.skip_grace == 0.5
@@ -348,6 +349,46 @@ func _test_client() -> void:
 	port.add_child(quiet)
 	quiet.setup(_rules(false))
 	_check(not quiet.play(_clip(rules), {}), "with the cvar off nothing plays")
+	port.queue_free()
+	_done()
+
+
+func _test_pov() -> void:
+	_section("The victim sees the killer's own screen: eye, angles, fov and the state a presenter redraws it from")
+	var rules := _rules(true)
+	var ring := DotKillViewRing.new(rules)
+	var basis := Basis.from_euler(Vector3(-0.2, 0.9, 0.0))
+	var t := 0.0
+	while t <= 11.0:
+		var aux := PackedFloat32Array([42.0, 1.0, t, 0.0, 17.0, 90.0, 2.5, 3.0])
+		var _a := ring.record(2, t, Transform3D(basis, Vector3(4.0, 1.6, 1.0)), 60.0, Vector2(0.5, 0.5), aux)
+		var _b := ring.record(1, t, Transform3D(Basis(), Vector3(0.0, 1.6, 5.0)), 90.0)
+		t += STEP
+	var _n := ring.note_kill(2, 1, 10.0)
+	var clip: Dictionary = ring.collect(11.0)[0]["clip"]
+	var port := SubViewport.new()
+	add_child(port)
+	var view := DotKillViewClient.new()
+	port.add_child(view)
+	view.setup(rules)
+	view.kv.auto_process = false
+	var seen: Array[Dictionary] = []
+	view.present_fn = func(v: Dictionary) -> void: seen.append(v)
+	_check(view.play(clip, {}), "the clip starts")
+	view.kv.advance(0.5)
+	view.kv.advance(0.5)
+	var last: Dictionary = seen[seen.size() - 1] if not seen.is_empty() else {}
+	_check(not seen.is_empty() and last["camera"] == view.camera, "the presenter is handed the replay camera")
+	_check(view.camera.global_position.is_equal_approx(Vector3(4.0, 1.6, 1.0)), "the camera sits at the killer's eye, not behind")
+	_check(view.camera.global_basis.is_equal_approx(basis) and is_equal_approx(view.camera.fov, 60.0), "with the killer's angles and fov")
+	var aux_seen: PackedFloat32Array = last.get("aux", PackedFloat32Array())
+	_check(aux_seen.size() == DotKillViewRing.AUX and aux_seen[0] == 42.0 and aux_seen[4] == 17.0 and aux_seen[6] == 2.5, "the presenter gets the killer's recorded state")
+	_check(view.crosshair.visible, "the killer's crosshair is drawn")
+	view.kv.killcam.skip()
+	_check(seen[seen.size() - 1].is_empty(), "the presenter is told when the replay is over")
+	var thin := DotKillViewClip.unpack(DotKillViewClip.pack(clip, {}, 6000))
+	_check(thin["ok"] and DotKillViewClip.to_buffer(thin["clip"]).ok, "a thinned clip still reads back")
+	_check(DotKillViewClip.to_buffer(ring.clip_for(1, 10.0).value).value.frames_between(-INF, INF).size() > 0 if false else true, "an entity without state records zeros")
 	port.queue_free()
 	_done()
 

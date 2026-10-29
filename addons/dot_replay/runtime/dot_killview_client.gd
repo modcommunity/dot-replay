@@ -2,7 +2,7 @@ class_name DotKillViewClient
 extends Node
 
 ## The client half of the kill view: plays the clip the server sent on this player's death from behind
-## the killer (or at the killer's eye and crosshair, `mp_killview_camera` 0) on its own camera, hides
+## the killer's eye (or behind them, `mp_killview_camera` 1) on its own camera, hides
 ## what [member hide_fn] names meanwhile, and hands the screen back when it ends or is skipped.
 
 const CHANNEL := "replay.killview.client"
@@ -22,6 +22,10 @@ var crosshair: Crosshair = null
 ## () -> Array: the nodes to hide while a replay runs (the HUD, the view model).
 var hide_fn: Callable = Callable()
 
+## (view: Dictionary) -> void, each frame of a replay and once with {} at its end: redraws the killer's
+## screen (viewmodel, HUD) from {camera, aux, fov, cursor}. Assign it to show more than the world.
+var present_fn: Callable = Callable()
+
 ## Optional final-killcam recorder that poses the bodies around the kill, duck-typed: `buffer`
 ## ([DotKillcamBuffer] with "kill" events {killer, victim}), `pose_at(time, killer, victim) -> {target}`,
 ## `restore_bodies()`, `world_mask`. Null leaves the world as it is.
@@ -34,6 +38,7 @@ var _victim: int = 0
 var _posed: Dictionary = {}
 var _previous_camera: Camera3D = null
 var _hidden: Dictionary = {}
+var _aux := PackedFloat32Array()
 
 
 ## Builds the player, camera and crosshair under this node.
@@ -42,6 +47,7 @@ func setup(rules: DotKillViewRules) -> void:
 	kv.name = "KillView"
 	add_child(kv)
 	kv.moment.connect(_on_moment)
+	kv.state.connect(func(a: PackedFloat32Array) -> void: _aux = a)
 	kv.view.connect(_on_view)
 	kv.finished.connect(_on_finished)
 	kv.respawn_requested.connect(func() -> void: respawn_requested.emit())
@@ -128,11 +134,15 @@ func _on_view(xform: Transform3D, fov: float, cursor: Vector2, has_cursor: bool)
 	# The killer's crosshair belongs to the killer's screen, not one behind them.
 	crosshair.visible = has_cursor and not behind
 	crosshair.at = cursor
+	if present_fn.is_valid():
+		present_fn.call({"camera": camera, "aux": _aux, "fov": camera.fov, "cursor": cursor, "behind": behind, "crosshair": crosshair})
 
 
 func _on_finished(skipped: bool) -> void:
 	DotLog.info(CHANNEL, "kill view ended", {"skipped": skipped})
 	crosshair.visible = false
+	if present_fn.is_valid():
+		present_fn.call({})
 	if stage != null:
 		stage.call(&"restore_bodies")
 	_posed = {}

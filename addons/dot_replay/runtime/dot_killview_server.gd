@@ -16,7 +16,8 @@ var tick_rate: int = 60
 ## Wall seconds the slow motion around the kill adds to a clip's span, held on top of it.
 var slowmo_margin: float = 1.0
 
-## () -> Array of {id, transform: Transform3D, fov?: float, cursor?: Vector2}: every living eye now.
+## () -> Array of {id, transform: Transform3D, fov?: float, cursor?: Vector2,
+## aux?: PackedFloat32Array of [constant DotKillViewRing.AUX] game-defined floats}: every living eye now.
 var eyes_fn: Callable = Callable()
 
 ## (victim, until_tick) -> int: delays a waiting victim's respawn to at least [param until_tick]
@@ -61,7 +62,7 @@ func record(time: float) -> void:
 	if not rules.enabled or not eyes_fn.is_valid():
 		return
 	for e: Dictionary in eyes_fn.call():
-		var _noted := ring.record(e["id"], time, e["transform"], float(e.get("fov", default_fov)), e.get("cursor", Vector2(0.5, 0.5)))
+		var _noted := ring.record(e["id"], time, e["transform"], float(e.get("fov", default_fov)), e.get("cursor", Vector2(0.5, 0.5)), e.get("aux", PackedFloat32Array()))
 
 
 ## A death: the killer's clip is cut once [member DotKillViewRules.post_seconds] have passed.

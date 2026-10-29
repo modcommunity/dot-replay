@@ -66,7 +66,11 @@ var weapon_icon_fn: Callable = Callable()
 var hide_while_playing: Array = []
 
 ## Where the camera sits ([enum DotKillViewRules.Camera]): the game's `mp_killview_camera`.
-var camera_mode_fn: Callable = func() -> int: return DotKillViewRules.Camera.BEHIND
+var camera_mode_fn: Callable = func() -> int: return DotKillViewRules.Camera.EYE
+
+## (view: Dictionary) -> void, each frame of the replay and once with {} at its end: redraws the killer's
+## screen from {camera, aux, fov}. aux is [method state_fn]'s row from index 5, as floats.
+var present_fn: Callable = Callable()
 
 ## Layers the camera boom stops against (the map's).
 var world_mask: int = 1
@@ -197,6 +201,8 @@ func _apply(s: Dictionary) -> void:
 		var v := place_camera(posed, _base_fov, get_process_delta_time())
 		camera.global_transform = v["transform"]
 		camera.fov = v["fov"]
+		if present_fn.is_valid():
+			present_fn.call({"camera": camera, "aux": posed.get("aux", PackedFloat32Array()), "fov": camera.fov, "behind": int(camera_mode_fn.call()) == DotKillViewRules.Camera.BEHIND})
 
 
 ## Poses every recorded body at [param time] on this client's own clock; see [method pose].
@@ -226,6 +232,7 @@ func pose(s: Dictionary, killer_id: Variant, victim_id: Variant) -> Dictionary:
 		var speed := (ra[0] as Vector3).distance_to(rb[0]) * 60.0
 		if id == killer_id:
 			var eye := feet + Vector3(0.0, float(rb[4]), 0.0)
+			out["aux"] = PackedFloat32Array(rb.slice(5)) if rb.size() > 5 else PackedFloat32Array()
 			out["eye"] = Transform3D(Basis.from_euler(Vector3(deg_to_rad(pitch), deg_to_rad(yaw), 0.0)), eye)
 			_place(p, feet, yaw, behind, pitch, speed)
 		else:
@@ -257,6 +264,8 @@ func _place(p: Node, feet: Vector3, yaw: float, shown: bool, pitch: float, speed
 
 
 func _on_finished(skipped: bool) -> void:
+	if present_fn.is_valid():
+		present_fn.call({})
 	restore_bodies()
 	for n: Variant in _hidden:
 		if is_instance_valid(n):

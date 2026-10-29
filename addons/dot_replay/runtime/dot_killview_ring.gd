@@ -6,8 +6,11 @@ extends RefCounted
 
 const CHANNEL := "replay.killview"
 
-## Floats per sample: time, position 3, rotation 4, fov, cursor 2.
-const STRIDE := 11
+## Floats per sample: time, position 3, rotation 4, fov, cursor 2, then [constant AUX] game-defined.
+const STRIDE := 19
+
+## Game-defined floats per sample (held weapon, aim, ammo, spread...) a presenter redraws the killer's screen from.
+const AUX := 8
 
 ## Most entities tracked; a view of each costs a few KiB.
 var max_entities: int = 256
@@ -24,7 +27,7 @@ func _init(p_rules: DotKillViewRules = null) -> void:
 
 ## Notes where [param id] looked at [param time]; [param cursor] is its crosshair in 0..1 screen
 ## space. False when off, too soon after the last sample (rate), or the entity table is full.
-func record(id: Variant, time: float, xform: Transform3D, fov: float, cursor: Vector2 = Vector2(0.5, 0.5)) -> bool:
+func record(id: Variant, time: float, xform: Transform3D, fov: float, cursor: Vector2 = Vector2(0.5, 0.5), aux: PackedFloat32Array = PackedFloat32Array()) -> bool:
 	if not rules.enabled:
 		return false
 	var track: _Track = _tracks.get(id)
@@ -37,9 +40,12 @@ func record(id: Variant, time: float, xform: Transform3D, fov: float, cursor: Ve
 		return false
 	var q := xform.basis.orthonormalized().get_rotation_quaternion()
 	var c := cursor if rules.include_cursor else Vector2.ZERO
-	track.push(time, PackedFloat32Array([
+	var row := PackedFloat32Array([
 		0.0, xform.origin.x, xform.origin.y, xform.origin.z, q.x, q.y, q.z, q.w, fov, c.x, c.y,
-	]))
+	])
+	for k in AUX:
+		row.append(aux[k] if k < aux.size() else 0.0)
+	track.push(time, row)
 	return true
 
 
@@ -97,7 +103,7 @@ func clip_for(killer: Variant, kill_time: float, info: Dictionary = {}) -> DotRe
 	if flat.is_empty():
 		return DotResult.fail(DotError.CODE_STATE, "The killer's view does not cover the kill.", str(killer))
 	return DotResult.success({
-		"v": 1, "killer": killer, "cursor": rules.include_cursor, "f": flat, "info": info,
+		"v": 2, "killer": killer, "cursor": rules.include_cursor, "f": flat, "info": info,
 	})
 
 

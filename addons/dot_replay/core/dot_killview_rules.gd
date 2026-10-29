@@ -52,7 +52,7 @@ var slowmo: float = 0.5
 var record_hz: float = 30.0
 
 ## The killer's eye shows neither killer nor shot; behind the killer frames both, so it is the default.
-var camera: Camera = Camera.BEHIND
+var camera: Camera = Camera.EYE
 
 ## Whether the match's last kill is replayed before the summary.
 var final_killcam: bool = true

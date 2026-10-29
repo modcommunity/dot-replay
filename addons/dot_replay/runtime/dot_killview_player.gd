@@ -13,6 +13,9 @@ signal view(transform: Transform3D, fov: float, cursor: Vector2, has_cursor: boo
 ## the clip holds only the killer's eye, so the game poses the bodies it drew itself at this instant.
 signal moment(seconds_from_kill: float)
 
+## The killer's game-defined state at the replayed instant (see [constant DotKillViewRing.AUX]), just before [signal view].
+signal state(aux: PackedFloat32Array)
+
 ## Over; [param skipped] when the victim (or a short clip) ended it early. The respawn flow resumes here.
 signal finished(skipped: bool)
 
@@ -74,6 +77,7 @@ func advance(delta: float) -> void:
 func _on_frame(sample: Dictionary) -> void:
 	moment.emit(float(sample.get("time", 0.0)))
 	var v := DotKillViewClip.view_at(sample)
+	state.emit(v["aux"])
 	view.emit(v["transform"], v["fov"], v["cursor"], v["has_cursor"])
 
 

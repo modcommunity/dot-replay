@@ -2,7 +2,7 @@ class_name DotKillViewClip
 extends RefCounted
 
 ## Reads a killer-view clip (from [method DotKillViewRing.clip_for]) as a [DotKillcamBuffer]
-## whose frames are {p, q, fov, cur}, and turns a [DotKillcam] sample back into a view.
+## whose frames are {p, q, fov, cur, aux}, and turns a [DotKillcam] sample back into a view.
 
 ## Kill event kind in the buffer; the kill is at time 0.
 const KIND_KILL := &"kill"
@@ -13,7 +13,7 @@ const MAX_SAMPLES := 4096
 
 ## The buffer for [param clip], failing with CODE_PARSE for anything that is not a clip.
 static func to_buffer(clip: Dictionary) -> DotResult:
-	if int(clip.get("v", 0)) != 1 or not (clip.get("f") is PackedFloat32Array):
+	if int(clip.get("v", 0)) != 2 or not (clip.get("f") is PackedFloat32Array):
 		return DotResult.fail(DotError.CODE_PARSE, "Not a kill view clip.")
 	var flat: PackedFloat32Array = clip["f"]
 	var n := flat.size() / DotKillViewRing.STRIDE
@@ -34,7 +34,7 @@ static func to_buffer(clip: Dictionary) -> DotResult:
 		var cur := Vector2(flat[o + 9], flat[o + 10]) if use_cursor else Vector2(-1.0, -1.0)
 		var accepted := buffer.push_frame(flat[o], {
 			"p": Vector3(flat[o + 1], flat[o + 2], flat[o + 3]), "q": q.normalized(),
-			"fov": flat[o + 8], "cur": cur,
+			"fov": flat[o + 8], "cur": cur, "aux": flat.slice(o + 11, o + 11 + DotKillViewRing.AUX),
 		})
 		if not accepted:
 			return DotResult.fail(DotError.CODE_PARSE, "A kill view clip out of time order.")
@@ -42,7 +42,8 @@ static func to_buffer(clip: Dictionary) -> DotResult:
 	return DotResult.success(buffer)
 
 
-## The view at a [DotKillcam] sample: {transform, fov, cursor, has_cursor}; cursor is in 0..1.
+## The view at a [DotKillcam] sample: {transform, fov, cursor, has_cursor, aux}; cursor is in 0..1,
+## aux is the earlier sample's (a held weapon does not blend).
 static func view_at(sample: Dictionary) -> Dictionary:
 	var a: Dictionary = sample["a"]
 	var b: Dictionary = sample["b"]
@@ -54,6 +55,7 @@ static func view_at(sample: Dictionary) -> Dictionary:
 		"fov": lerpf(a["fov"], b["fov"], t),
 		"cursor": cursor,
 		"has_cursor": (a["cur"] as Vector2).x >= 0.0,
+		"aux": a["aux"],
 	}
 
 

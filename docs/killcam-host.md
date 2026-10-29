@@ -29,7 +29,8 @@ Call `host.frame()` once a frame after the bodies are presented, `host.note_kill
 | `state_fn` | none | the drawn state of a body |
 | `place_body_fn`, `restore_body_fn` | none | pose a body, put it back; `touched` is the dictionary to save into, once, before the first change |
 | `can_play_fn` | always | refuse a replay (a suicide) |
-| `camera_mode_fn`, `world_mask` | behind, layer 1 | `DotKillViewRules.Camera` and the boom's mask |
+| `camera_mode_fn`, `world_mask` | the killer's eye, layer 1 | `DotKillViewRules.Camera` and the boom's mask |
+| `present_fn` | unset | `(view: Dictionary)` each frame with `{camera, aux, fov, behind}` and `{}` at the end: draw the killer's viewmodel and HUD |
 | `camera_cull_extra` | 0 | layers the camera also draws (a local body's layer) |
 | `weapon_name_fn`, `weapon_icon_fn`, `hide_while_playing`, `seconds_fn`, `now_fn` | see the script | banner, HUD hiding, length, a test clock |
 | `rules` | null | a `DotKillViewRules`: `mp_killview_final` 0 skips the final killcam, `mp_killview_skip_grace` ignores skip keys for the first seconds |

@@ -18,6 +18,8 @@ Client:
 3. `view.respawn_requested` fires only on a skip: send the respawn request there. `view.over(skipped)` resumes the flow.
 4. Optional `view.stage`: a final-killcam recorder with `buffer` (a `DotKillcamBuffer` holding `kill` events), `pose_at(time, killer, victim) -> {target}`, `restore_bodies()` and `world_mask`, so the bodies stand where they were and the behind camera frames the victim.
 
+5. Optional `present_fn` (on the client and on `DotKillcamHost`): called every frame with `{camera, aux, fov, cursor, behind, crosshair}` and once with `{}` at the end, so a game can draw the killer's own screen (viewmodel, crosshair, ammo) over the replay camera. `aux` is up to eight floats a game puts in `eyes_fn`'s `"aux"` (or after index 4 of the host's `state_fn` row); the clip carries them as version 2 and a held value is not blended between samples. The eye camera is the default because the victim should see the killer's screen as the killer did.
+
 The lower pieces (`DotKillViewRing`, `DotKillViewPlayer`) stay public for a game that draws its own camera.
 
 ## Cvars
@@ -33,7 +35,7 @@ The lower pieces (`DotKillViewRing`, `DotKillViewPlayer`) stay public for a game
 | `mp_killview_skip_action` | `ui_accept` | input action that skips (Space by default) |
 | `mp_killview_slowmo` | 0.5 | speed around the kill |
 | `mp_killview_hz` | 30 | view samples per second per entity |
-| `mp_killview_camera` | 1 | 0 the killer's eye, 1 behind the killer |
+| `mp_killview_camera` | 0 | 0 the killer's eye (their screen), 1 behind the killer |
 | `mp_killview_final` | 1 | the match's last kill is replayed before the summary (`DotKillcamHost.rules`) |
 | `mp_killview_skip_grace` | 1 | seconds a replay ignores skip keys, so the click or jump that ended the match does not skip it |
 
