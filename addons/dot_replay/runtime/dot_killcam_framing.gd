@@ -42,14 +42,17 @@ func place(mode: int, eye: Transform3D, base_fov: float, target: Variant = null,
 		return {"transform": eye, "fov": base_fov}
 	var fwd := -eye.basis.z.normalized()
 	var reach := aim_distance
+	var toward := 0.0
 	if target is Vector3:
 		reach = maxf(eye.origin.distance_to(target), 1.0)
+		# A victim off the aim (behind the killer) would turn the camera round onto the killer's face.
+		toward = smoothstep(0.3, 0.8, fwd.dot(((target as Vector3) - eye.origin).normalized()))
 	var fov := base_fov
-	if victim_share > 0.0:
+	if victim_share > 0.0 and toward > 0.0:
 		# The victim's 1.8 m at victim_share of the height, seen from behind the killer.
 		var wanted_height := 1.8 / victim_share
 		var narrow := rad_to_deg(2.0 * atan(wanted_height * 0.5 / (reach + back)))
-		fov = clampf(narrow, minf(min_fov, base_fov), base_fov)
+		fov = lerpf(base_fov, clampf(narrow, minf(min_fov, base_fov), base_fov), toward)
 	# Dolly out as the lens narrows, so the killer stays the same size on screen.
 	var dolly := tan(deg_to_rad(base_fov) * 0.5) / maxf(tan(deg_to_rad(fov) * 0.5), 0.01)
 	var flat_right := Vector3(-fwd.z, 0.0, fwd.x).normalized() if Vector2(fwd.x, fwd.z).length() > 0.001 else eye.basis.x
@@ -57,7 +60,7 @@ func place(mode: int, eye: Transform3D, base_fov: float, target: Variant = null,
 	var at := probe.resolve(eye.origin, wanted, delta)
 	var look := eye.origin + fwd * reach
 	if target is Vector3:
-		look = target
+		look = look.lerp(target, toward)
 	var dir := look - at
 	var basis := eye.basis
 	if dir.length() > 0.01 and absf(dir.normalized().dot(Vector3.UP)) < 0.995:

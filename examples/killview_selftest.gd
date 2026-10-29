@@ -4,7 +4,7 @@ extends Node
 ## victim plays slowed at the kill, Space skips and respawns, and the cvars drive all of it.
 
 const SECTIONS := 6
-const CHECKS := 56
+const CHECKS := 58
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -253,6 +253,12 @@ func _test_framing() -> void:
 	var far := framing.place(DotKillViewRules.Camera.BEHIND, eye, 75.0, eye.origin - eye.basis.z * 40.0)
 	_check(float(far["fov"]) < float(near["fov"]) and float(far["fov"]) >= framing.min_fov,
 		"a far victim narrows the lens (%.1f, near %.1f)" % [far["fov"], near["fov"]])
+	var back_of := framing.place(DotKillViewRules.Camera.BEHIND, eye, 75.0, eye.origin + eye.basis.z * 6.0)
+	var bt: Transform3D = back_of["transform"]
+	_check((-bt.basis.z).dot(-eye.basis.z) > 0.9 and float(back_of["fov"]) == 75.0,
+		"a victim behind the killer: the camera keeps the killer's aim and does not turn onto its face")
+	var free := framing.place(DotKillViewRules.Camera.BEHIND, eye, 75.0)
+	_check(float(free["fov"]) == 75.0, "no victim known: no zoom")
 	var player := _player(_rules(true))
 	var moments: Array[float] = []
 	player.moment.connect(func(t: float) -> void: moments.append(t))
