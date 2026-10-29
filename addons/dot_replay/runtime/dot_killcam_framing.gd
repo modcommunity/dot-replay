@@ -2,13 +2,6 @@ class_name DotKillcamFraming
 extends RefCounted
 ## Where a killcam's camera goes, given the killer's eye: the eye itself, or behind the killer on a
 ## [DotCameraProbe] boom, looking down the aim and zoomed toward a distant victim so both read.
-##
-## [codeblock]
-## var framing := DotKillcamFraming.new(get_world_3d(), world_mask)
-## # each replayed frame
-## var v := framing.place(rules.camera, eye, 75.0, victim_chest, delta)
-## camera.global_transform = v["transform"]; camera.fov = v["fov"]
-## [/codeblock]
 
 ## Metres behind the killer's eye, at the base field of view.
 var back: float = 2.6
