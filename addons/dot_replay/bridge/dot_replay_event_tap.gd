@@ -1,20 +1,9 @@
 class_name DotReplayEventTap
 extends RefCounted
 
-## Records a server's game events: every event the bus fires, with its data and whether a
-## hook cancelled it.
-##
-## Duck-typed against anything with an [code]event_fired(event)[/code] signal whose event
-## has [code]name[/code], [code]data[/code] and [code]cancelled[/code] — which is
-## dot-server's [code]DotEventBus[/code], never named here, so this addon does not need
-## dot-server installed to be installed itself.
-##
-## [b]Cancelled events are recorded too, by default.[/b] A chat line a filter blocked, a
-## map change an admin vetoed: for moderation, what somebody TRIED is as much the record as
-## what happened. [member include_cancelled] turns it off for a demo meant for watching.
-##
-## Event data often carries a session object. That is not plain data and cannot go in a
-## file, so [method DotReplayFormat.plain] replaces it with its [code]describe()[/code].
+## Records every game event a bus fires, with its data and whether a hook cancelled it.
+## Duck-typed on an [code]event_fired(event)[/code] signal so dot-server is not required.
+## Cancelled events are kept by default (what somebody tried matters for moderation); sessions in data become their [code]describe()[/code].
 
 const CHANNEL := "replay"
 

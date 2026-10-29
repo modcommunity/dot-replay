@@ -1,24 +1,9 @@
 class_name DotReplayPlayer
 extends Node
 
-## Plays a replay back: records emitted in tick order, at a speed, with pause and seek.
-##
-## [b]It emits records and applies nothing.[/b] What a snapshot or a kill means is the
-## game's, so playback is three signals the game connects: [signal state_reset] (throw your
-## state away and take this one — a keyframe, or null for "from nothing"),
-## [signal record_played] (apply this), and [signal finished]. That is what lets one player
-## drive a 3D spectator view, a 2D minimap, and a headless suite that folds records into a
-## Dictionary.
-##
-## [b]Seeking is a keyframe and a fast-forward.[/b] [method seek] finds the last keyframe
-## at or before the target in the index, hands it to [signal state_reset], then emits every
-## record between it and the target with [member is_seeking] set, so a game can apply
-## state and skip the sound of forty gunshots. The state reached is exactly the state
-## linear playback reaches at that tick — the suite checks that at every kind of boundary.
-##
-## [b]Time comes from [member now_fn][/b], seconds as a float. It defaults to the engine's
-## monotonic clock; a suite injects one it can move by hand, which is the only way to
-## check "half a second at 2x is 64 ticks" without sleeping in a test.
+## Plays a replay back: records emitted in tick order, at a speed, with pause and seek. It applies
+## nothing; the game connects [signal state_reset], [signal record_played] and [signal finished].
+## Seek = nearest keyframe plus fast-forward with [member is_seeking] set; time comes from [member now_fn].
 
 const CHANNEL := "replay"
 
@@ -93,7 +78,6 @@ func open(path: String, key: PackedByteArray = PackedByteArray()) -> DotResult:
 	return load_file(f)
 
 
-# --- Transport -------------------------------------------------------------
 
 func play() -> DotResult:
 	if file == null:
@@ -167,7 +151,6 @@ func played_count() -> int:
 	return _played
 
 
-# --- Time ------------------------------------------------------------------
 
 ## Advances by the time since the last poll and emits what falls due. Returns how many
 ## records were emitted.
@@ -193,7 +176,6 @@ func step_ticks(ticks: int) -> int:
 	return _emit_through(floori(_pos))
 
 
-# --- Seeking ---------------------------------------------------------------
 
 ## Brings playback to [param tick]: the state after every record at or before it.
 func seek(tick: int) -> DotResult:

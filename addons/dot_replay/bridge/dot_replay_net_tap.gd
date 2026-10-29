@@ -1,27 +1,9 @@
 class_name DotReplayNetTap
 extends RefCounted
 
-## Records what a netcode manager sends: every payload through its [code]send_fn[/code].
-##
-## Duck-typed against anything with a [code]send_fn[/code] property of the shape
-## [code]func(peer_id: int, payload: PackedByteArray, delivery: int)[/code] — which is
-## dot-net's [code]DotNetManager[/code], never named here. The tap wraps the callable,
-## forwards every call unchanged, and records the ones for [member peer_id].
-##
-## [b]Which peer, and why it matters.[/b] dot-net deltas each peer's snapshots against
-## what THAT peer acknowledged, and culls them by what that peer can see. So the stream to
-## one peer is a complete, decodable account of that peer's view and nothing else — and a
-## mixture of two peers' streams decodes as neither. Record ONE peer. The natural one is a
-## peer the server adds for the purpose with no body and every entity relevant to it: a
-## recording observer. -1 records every peer, for a byte-for-byte log rather than a demo.
-##
-## [b]What this does not solve, said plainly.[/b] Those payloads are deltas. Played from
-## the first record into a client manager with the same declarations they rebuild the
-## match; played from the middle they do not, because the baseline is missing. So a demo
-## made from this tap seeks only as well as the keyframes the game gives [member
-## DotReplayRecorder.keyframe_fn] — a full-state capture of its own. Playing a recorded
-## stream into a client manager is the game's code and is not exercised by this addon's
-## suite, which has no dot-net to run it against.
+## Records the payloads a netcode manager sends through its [code]send_fn[/code], for one [member peer_id] (-1: all).
+## One peer only: each peer's deltas decode against its own acks, so mixed streams decode as neither.
+## The payloads are deltas, so seeking needs the game's [member DotReplayRecorder.keyframe_fn].
 
 const CHANNEL := "replay"
 

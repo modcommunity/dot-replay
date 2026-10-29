@@ -1,14 +1,9 @@
 class_name DotReplayRecord
 extends RefCounted
 
-## One thing the server decided, at one tick, on one channel.
-##
-## [b]The payload is opaque on purpose.[/b] dot-replay does not know what a snapshot, a
-## kill or a chat line looks like, and must not: the same file format has to hold a
-## deathmatch, a timer run and a lobby, and the only party that can interpret a record is
-## the game that wrote it. So a record is bytes, plus one bit saying whether those bytes
-## are a [code]var_to_bytes[/code] Variant — which is a convenience for small structured
-## events, not a schema.
+## One thing the server decided, at one tick, on one channel. The payload is opaque on purpose:
+## only the game that wrote it can interpret it. A flag says whether the bytes are a
+## [code]var_to_bytes[/code] Variant, for small structured events.
 
 ## The payload is [code]var_to_bytes[/code] of a Variant rather than raw bytes.
 const FLAG_VARIANT := 1 << 0
@@ -42,12 +37,8 @@ func is_variant() -> bool:
 	return flags & FLAG_VARIANT != 0
 
 
-## The payload as the recorder was given it: the Variant for a value record, the bytes
-## otherwise.
-##
-## [code]bytes_to_var[/code] and never [code]bytes_to_var_with_objects[/code]. A replay is
-## a file somebody may have been sent as evidence, and decoding objects from one would run
-## whatever script it named.
+## The payload as given: the Variant for a value record, the bytes otherwise. Decoded with
+## [code]bytes_to_var[/code], never the with-objects form, since a replay may be untrusted evidence.
 func value() -> Variant:
 	if not is_variant():
 		return data

@@ -1,27 +1,9 @@
 class_name DotReplayFile
 extends RefCounted
 
-## Reads a replay: the header, the chunk list, and any chunk's records on demand.
-##
-## Three outcomes, and they are deliberately different:
-##
-## [b]Complete[/b] — the footer is there and its hash covers the index and the whole chain.
-## The index is used, so opening an hour-long demo does not read an hour of it.
-##
-## [b]Truncated[/b] — no footer, because the recorder never reached [method
-## DotReplayWriter.finish]: the server crashed, the disk filled, the power went. The file
-## is scanned chunk by chunk and plays up to the last chunk that is whole. This is a
-## success with [member truncated] set, never a failure, because a demo of a crashed
-## match is often the demo somebody wants.
-##
-## [b]Refused[/b] — a whole chunk whose hash does not match, a footer that does not match
-## its index, a header that does not match its hash. Something edited the file, and an
-## edited demo is not evidence of anything. [code]CODE_INTEGRITY[/code], naming the part.
-##
-## The difference between the second and third is whether the damage is at the end and
-## incomplete (a crash) or anywhere and complete (an edit). A crash cannot produce a whole
-## chunk with a wrong hash; an editor can produce a truncated file, and the format says
-## what it cannot see in [DotReplayFormat].
+## Reads a replay: header, chunk list, any chunk's records on demand. Complete (footer, index used),
+## truncated (no footer: a success with [member truncated] set) or refused ([code]CODE_INTEGRITY[/code]).
+## What each case means: docs/design.md, file layout.
 
 const CHANNEL := "replay"
 
@@ -56,12 +38,8 @@ var _cache_index: int = -1
 var _cache: Array[DotReplayRecord] = []
 
 
-## Opens and checks [param p_path].
-##
-## [param verify] reads and hashes every chunk now, which is what a moderator opening
-## evidence wants. Without it a complete file is trusted as far as its footer and each
-## chunk is verified when it is first read — [method read_chunk] still refuses an edited
-## one, it just finds out later.
+## Opens and checks [param p_path]. [param verify] hashes every chunk now; without it a complete
+## file is trusted to its footer and [method read_chunk] still refuses an edited chunk when read.
 func open(p_path: String, key: PackedByteArray = PackedByteArray(), verify: bool = true) -> DotResult:
 	path = p_path
 	_key = key
@@ -236,10 +214,7 @@ func _scan(f: FileAccess, header_end: int, length: int) -> DotResult:
 		var prefix := f.get_buffer(DotReplayFormat.CHUNK_PREFIX_SIZE)
 		var magic := prefix.slice(0, 4).get_string_from_ascii()
 		if magic == DotReplayFormat.MAGIC_INDEX:
-			# The index began and the footer never landed. Every chunk is whole and nothing
-			# was lost: the index is derived from the chunks, which is why the scan does not
-			# need it. Counting its bytes as lost made a finished-but-for-one-byte file
-			# report fifteen hundred bytes of missing match.
+# The index began and the footer never landed: every chunk is whole, so nothing is lost.
 			trailing_bytes = 0
 			break
 		var parsed := DotReplayChunk.parse_prefix(prefix)
@@ -304,7 +279,6 @@ func _verify_chunk(f: FileAccess, i: int) -> DotResult:
 	return DotResult.success(c)
 
 
-# --- Reading ---------------------------------------------------------------
 
 func chunk_count() -> int:
 	return _chunks.size()

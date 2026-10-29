@@ -2,42 +2,8 @@ class_name DotReplayFormat
 extends RefCounted
 
 ## The file format's constants and the few pure functions every piece shares.
-##
-## [codeblock]
-## file    := preamble header header_hash chunk* [index footer]
-## preamble:= "DRPL" u16 version  u16 flags  u32 header_len          (12 bytes)
-## header  := var_to_bytes(Dictionary)                              (header_len bytes)
-## header_hash := H(preamble || header)                             (32)  -- h0
-##
-## chunk   := "CHNK" u32 seq  u64 first_tick  u64 last_tick  u32 count
-##            u8 chunk_flags  u8 compression  u32 raw_size  u32 stored_size   (38)
-##            stored[stored_size]
-##            h_i := H(h_{i-1} || the 38 bytes || stored)          (32)
-##
-## index   := "INDX" u32 n  { u64 offset u64 first u64 last u32 count u8 flags h_i }*n
-## footer  := "FOOT" u64 index_offset  u32 n  u64 last_tick
-##            H(h_n || index || the 24 bytes before this hash)    (32)  "LPRD"   (60)
-## [/codeblock]
-##
-## Little-endian throughout, because [FileAccess] and [StreamPeerBuffer] both default to
-## it and a mismatch between the two would be a bug only a big-endian reader could find.
-##
-## [b]Why the hashes are a chain rather than one per chunk.[/b] A hash per chunk detects a
-## chunk that was edited. It does not detect one that was removed, duplicated or moved,
-## because each of those is still a chunk with a correct hash — and cutting thirty seconds
-## out of the middle of a demo is exactly the tamper that matters for moderation evidence.
-## Each hash covers the one before it, so every chunk vouches for its whole prefix and the
-## footer vouches for the whole file.
-##
-## [b]What the chain cannot do, said here so nobody claims it.[/b] An unkeyed SHA-256 is
-## tamper-EVIDENT against an accident or a careless edit, not against somebody who
-## recomputes the chain after editing. Two answers, and a moderation workflow should use
-## at least one: record [method DotReplayWriter.evidence]'s final hash somewhere the
-## file's holder cannot write (a punishment record's evidence), or record with a key
-## ([constant FLAG_KEYED]), which makes the chain an HMAC that only the key's holder can
-## produce. Neither detects a file cut short AND stripped of its footer — that is
-## indistinguishable from a crash, which is the case this format exists to survive. The
-## final hash recorded elsewhere is what tells the two apart.
+## Layout, little-endian choice and what the hash chain does and does not prove:
+## docs/design.md, file layout.
 
 const MAGIC_FILE := "DRPL"
 const MAGIC_CHUNK := "CHNK"
@@ -45,11 +11,8 @@ const MAGIC_INDEX := "INDX"
 const MAGIC_FOOTER := "FOOT"
 const MAGIC_END := "LPRD"
 
-## The only version this build writes, and the newest it reads.
-##
-## A reader refuses a newer file rather than guessing, because a newer writer may have
-## changed what a chunk means and a replay played wrongly is worse than one refused with a
-## reason. Older versions will be read here when there are any.
+## The only version this build writes, and the newest it reads; a newer file is refused,
+## since a newer writer may have changed what a chunk means.
 const VERSION := 1
 
 ## File flag: every hash in the file is an HMAC-SHA256 under a key the writer held.
@@ -129,12 +92,8 @@ static func ascii(s: String) -> PackedByteArray:
 	return s.to_ascii_buffer()
 
 
-## True if [param value] is, or contains at any depth, something [code]var_to_bytes[/code]
-## cannot put in a file honestly: an Object, a Callable, a Signal or an RID.
-##
-## [code]var_to_bytes[/code] does not refuse an object — it writes an id that means
-## nothing in any other process — so the refusal has to be ours. A structure nested
-## deeper than 64 is refused as well: it is a Dictionary containing itself, or near enough.
+## True if [param value] holds, at any depth, an Object, Callable, Signal or RID, which
+## [code]var_to_bytes[/code] would write as a meaningless id. Nesting past 64 is refused.
 static func contains_object(value: Variant, depth: int = 0) -> bool:
 	if depth > 64:
 		return true
@@ -163,10 +122,8 @@ static func preamble(version: int, flags: int, header_len: int) -> PackedByteArr
 	return b.data_array
 
 
-## [param value] with everything [method contains_object] objects to replaced, so an
-## event carrying a session object can still be recorded. An object with a [code]
-## describe()[/code] becomes what that returns (one level, then plain), anything else of
-## the four becomes null. Bounded in depth, because a Dictionary can contain itself.
+## [param value] with what [method contains_object] objects to replaced: an Object's
+## [code]describe()[/code] (one level), else null. Depth-bounded.
 static func plain(value: Variant, depth: int = 0) -> Variant:
 	if depth > 16:
 		return null

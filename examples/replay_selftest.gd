@@ -1,20 +1,8 @@
 extends "res://examples/selftest/replay_base.gd"
 
 ## Exercises dot-replay end to end: record, write, read, seek, cut short, tamper, play.
-##
-## [b]The seeking section is the one to keep.[/b] It records a match whose state is a
-## Dictionary folded from the records, keeps the true state at every tick while recording,
-## and then asks the player for dozens of ticks — keyframe boundaries, the tick before one,
-## the first, the last, past the end, backwards — and compares the state a seek reaches with
-## the state the match actually had. A seek that is off by one record reads correctly on
-## every check that does not look at a boundary.
-##
-## Files go under [code]user://dot_replay_selftest[/code], which the suite empties first, so
-## no run depends on the last one.
-##
-## [codeblock]
-## godot --headless --path . res://examples/replay_selftest.tscn
-## [/codeblock]
+## The seeking section compares a seek's state with the true state at every boundary tick.
+## Files go under [code]user://dot_replay_selftest[/code], emptied first.
 
 const SECTIONS := 12
 const CHECKS := 111
@@ -62,8 +50,6 @@ func _run() -> void:
 	get_tree().quit(1 if _failed > 0 else 0)
 
 
-# --- 1 ----------------------------------------------------------------------
-
 func _test_config_and_header() -> void:
 	_section("Configuration and header")
 
@@ -91,8 +77,6 @@ func _test_config_and_header() -> void:
 		"a demo's file name says the game and the map")
 	_done()
 
-
-# --- 2 ----------------------------------------------------------------------
 
 func _test_round_trip() -> void:
 	_section("Round trip: what was recorded is what is read")
@@ -150,8 +134,6 @@ func _test_round_trip() -> void:
 	_done()
 
 
-# --- 3 ----------------------------------------------------------------------
-
 func _test_compression() -> void:
 	_section("Compression shrinks a repetitive stream, and only when it helps")
 
@@ -191,8 +173,6 @@ func _test_compression() -> void:
 		"a small random chunk that zstd would grow is stored raw")
 	_done()
 
-
-# --- 4 ----------------------------------------------------------------------
 
 func _test_seeking() -> void:
 	_section("Seeking reaches exactly the state linear playback does")
@@ -267,8 +247,6 @@ func _test_seeking() -> void:
 	_done()
 
 
-# --- 5 ----------------------------------------------------------------------
-
 func _test_truncation() -> void:
 	_section("A file cut short plays up to its last whole chunk")
 
@@ -335,8 +313,6 @@ func _test_truncation() -> void:
 	_done()
 
 
-# --- 6 ----------------------------------------------------------------------
-
 func _test_tamper() -> void:
 	_section("An edited file is refused, and says where")
 
@@ -381,10 +357,8 @@ func _test_tamper() -> void:
 	_check(not r4.ok and r4.code() == DotError.CODE_INTEGRITY,
 		"chunks removed from the middle are refused, even disguised as a crash — the chain notices")
 
-	# A chunk transplanted from ANOTHER recording, at the same position, footer stripped. Its
-	# own hash is right and its sequence number is right; only the chain can see that it
-	# follows a chunk it was never written after. This is the check that fails with the
-	# chain taken out — the splice above is caught by the sequence number alone.
+	# A chunk from ANOTHER recording at the same position, footer stripped: only the chain
+	# catches it (the splice above is caught by the sequence number alone).
 	var other_path := DIR.path_join("tamper_other.dreplay")
 	_write_match(other_path, 300, PackedByteArray(), 64, 99)
 	var other := DotReplayFile.new()
@@ -417,8 +391,6 @@ func _test_tamper() -> void:
 		"an unkeyed file is not accepted as verified under a key")
 	_done()
 
-
-# --- 7 ----------------------------------------------------------------------
 
 func _test_version_and_bounds() -> void:
 	_section("A newer version, a wrong file and a decompression bomb are refused")
@@ -462,8 +434,6 @@ func _test_version_and_bounds() -> void:
 		"a chunk declaring 2 GB unpacked is refused before anything is allocated")
 	_done()
 
-
-# --- 8 ----------------------------------------------------------------------
 
 func _test_ring() -> void:
 	_section("The ring keeps the last N seconds, from a keyframe, within its bytes")
@@ -523,8 +493,6 @@ func _test_ring() -> void:
 	_check(tight.last_tick() == 1999, "and keeps the newest")
 	_done()
 
-
-# --- 9 ----------------------------------------------------------------------
 
 func _test_timing() -> void:
 	_section("Speed and pause, against an injected clock")
@@ -592,8 +560,6 @@ func _test_timing() -> void:
 	player.queue_free()
 	_done()
 
-
-# --- 10 ---------------------------------------------------------------------
 
 func _test_taps_and_filter() -> void:
 	_section("The taps record through duck typing; the player filters by channel")
@@ -676,8 +642,6 @@ func _test_taps_and_filter() -> void:
 	_done()
 
 
-# --- 11 ---------------------------------------------------------------------
-
 func _test_limits() -> void:
 	_section("Size limits, refusals, and a file that stops cleanly")
 
@@ -717,10 +681,6 @@ func _test_limits() -> void:
 	_check(f.open(path).ok and f.complete and size <= 4096, "and what is on disk is complete, verified and inside the limit (%d bytes)" % size)
 	_done()
 
-
-# --- Harness ---------------------------------------------------------------
-
-# --- 12 ---------------------------------------------------------------------
 
 func _test_user_cfg() -> void:
 	_section("replay.yml: defaults, file, user tier, schema")

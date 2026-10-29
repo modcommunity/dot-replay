@@ -67,3 +67,29 @@ A final killcam replays a client's last few seconds, so it needs decoded frames 
 - **Reverse playback.** Seeking backwards works; playing backwards would mean inverting records the addon cannot interpret.
 - **A timeline UI.** This ships no screens; `describe()` and the signals are what one would be built on.
 - **Reading an older format version.** There is only one. A newer `VERSION` is refused, and the reader is where a v1 path would go when v2 exists.
+
+## The file layout and what the hash chain can and cannot do
+
+```
+file    := preamble header header_hash chunk* [index footer]
+preamble:= "DRPL" u16 version  u16 flags  u32 header_len          (12 bytes)
+header  := var_to_bytes(Dictionary)                              (header_len bytes)
+header_hash := H(preamble || header)                             (32)  -- h0
+
+chunk   := "CHNK" u32 seq  u64 first_tick  u64 last_tick  u32 count
+           u8 chunk_flags  u8 compression  u32 raw_size  u32 stored_size   (38)
+           stored[stored_size]
+           h_i := H(h_{i-1} || the 38 bytes || stored)          (32)
+
+index   := "INDX" u32 n  { u64 offset u64 first u64 last u32 count u8 flags h_i }*n
+footer  := "FOOT" u64 index_offset  u32 n  u64 last_tick
+           H(h_n || index || the 24 bytes before this hash)    (32)  "LPRD"   (60)
+```
+
+Little-endian throughout, because `FileAccess` and `StreamPeerBuffer` both default to it.
+
+The hashes are a chain rather than one per chunk: a hash per chunk detects an edited chunk but not a removed, duplicated or moved one, and cutting thirty seconds out of a demo is the tamper that matters for moderation evidence. Each hash covers the one before, so every chunk vouches for its prefix and the footer for the whole file.
+
+An unkeyed SHA-256 is tamper-evident against accident or a careless edit, not against someone who recomputes the chain. Record the final hash (`DotReplayWriter.evidence`) somewhere the file's holder cannot write, or record with a key (`FLAG_KEYED`, an HMAC chain). Neither detects a file cut short and stripped of its footer, which is indistinguishable from a crash; the final hash recorded elsewhere tells them apart.
+
+A crashed recording is a success with `truncated` set (damage at the end, incomplete); an edit is `CODE_INTEGRITY` (damage anywhere, complete). A crash cannot produce a whole chunk with a wrong hash.

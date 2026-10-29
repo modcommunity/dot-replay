@@ -1,16 +1,9 @@
 class_name DotReplayHeader
 extends RefCounted
 
-## What a replay is of: the game, the map, the tick rate, when, who, and anything else.
-##
-## Written once, at the front of the file, before a single record — so a replay browser
-## can list a directory of demos by reading a few hundred bytes of each, and so a file cut
-## short by a crash still says what it was a recording of.
-##
-## [b]The player list is who was there at the start, and only that.[/b] A header cannot be
-## rewritten without rewriting the file, and a streaming recorder has already written it by
-## the time anybody joins. Joins and leaves are records like everything else; a game that
-## wants a roster in playback records one on a channel of its own.
+## What a replay is of: game, map, tick rate, when, who. Written once before any record, so a
+## browser can list demos cheaply and a crashed file still says what it was. The player list is
+## the roster at the start only; joins and leaves are records.
 
 ## The game's id, as the server resolved it.
 var game: String = ""

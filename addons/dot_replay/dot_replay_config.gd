@@ -2,12 +2,9 @@
 class_name DotReplayConfig
 extends DotConfig
 
-## Where demos go, how they are cut up, and how much of them is kept.
-##
-## Layered like every config here, so an operator can turn a server's ring up for one
-## tournament with [code]--replay-ring-seconds 300[/code] without editing a file. Times are
-## in seconds rather than ticks because the operator does not know the tick rate a game
-## chose; [method DotReplayRecorder.configure] converts with the header's.
+## Where demos go, how they are cut up, and how much is kept. Layered like every config here;
+## times are in seconds because the operator does not know the game's tick rate
+## ([method DotReplayRecorder.configure] converts).
 
 ## Where finished demos are written.
 @export var directory: String = "user://replays"

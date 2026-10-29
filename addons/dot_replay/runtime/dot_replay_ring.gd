@@ -1,23 +1,9 @@
 class_name DotReplayRing
 extends RefCounted
 
-## The last N seconds of a match, in memory, for "save that".
-##
-## A server cannot write a demo of every match to disk forever, and the moment somebody
-## types [code]!report[/code] is thirty seconds after the thing worth keeping. So the
-## recorder feeds sealed chunks here as well as (or instead of) to a file, and the ring
-## drops the oldest once they fall out of its window. [method save] turns what is held
-## into an ordinary replay file that plays, seeks and verifies like any other.
-##
-## [b]The window is kept from a keyframe, not from a tick.[/b] Dropping everything older
-## than exactly N seconds would leave a clip that begins between keyframes, and the first
-## few seconds of it would be deltas against a state nobody has. So the ring keeps back to
-## the last keyframe at or before the window's start: it holds up to one keyframe interval
-## more than asked, and a saved clip always begins with a whole state.
-##
-## [b]The byte ceiling wins over that.[/b] A game that keyframes rarely and records a lot
-## could otherwise hold far more than configured; past [member max_bytes] the oldest chunk
-## goes whether or not a keyframe goes with it, and a clip saved then says so in its meta.
+## The last N seconds of a match in memory, for "save that". Kept back to the keyframe at or before
+## the window start so a clip begins with a whole state; [member max_bytes] wins over that and the
+## clip's meta says so.
 
 const CHANNEL := "replay"
 
@@ -99,11 +85,8 @@ func starts_with_keyframe() -> bool:
 	return not _chunks.is_empty() and _chunks[0].starts_with_keyframe()
 
 
-## Writes the last [param seconds] of what is held (0: all of it) to [param path] as a
-## complete replay. Returns the writer's evidence Dictionary.
-##
-## The clip starts at the last keyframe at or before the moment asked for, so it may be a
-## little longer than [param seconds]; it is never shorter than what is held.
+## Writes the last [param seconds] held (0: all) to [param path] as a complete replay; returns the
+## writer's evidence. It starts at the keyframe at or before that moment, so it may run longer.
 func save(
 	path: String,
 	header: DotReplayHeader,

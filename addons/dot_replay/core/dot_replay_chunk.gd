@@ -1,20 +1,9 @@
 class_name DotReplayChunk
 extends RefCounted
 
-## A run of records, compressed together, and the unit of everything else.
-##
-## [b]A chunk is the unit of loss.[/b] The recorder writes and flushes a whole chunk at a
-## time, so a server that crashes loses the chunk it was filling and nothing before it —
-## at the default of one second per chunk, at most one second of match.
-##
-## [b]A chunk is the unit of seeking.[/b] A keyframe always begins a new chunk, so "the
-## nearest keyframe before tick T" is a lookup in the index and one decompression, never a
-## scan of the stream before it.
-##
-## [b]A chunk is self-contained.[/b] Its channel names travel inside it rather than in a
-## table in the header, because a channel first used an hour in would otherwise need the
-## header rewritten, and a streaming file cannot rewrite its header. Compression makes the
-## repetition nearly free.
+## A run of records, compressed together: the unit of loss (a crash costs one chunk) and of seeking
+## (a keyframe starts a chunk). Self-contained: channel names travel inside, since a streamed
+## header cannot be rewritten when a new channel appears.
 
 var seq: int = 0
 var first_tick: int = 0
@@ -33,12 +22,8 @@ func starts_with_keyframe() -> bool:
 	return flags & DotReplayFormat.CHUNK_KEYFRAME != 0
 
 
-## Encodes and compresses [param records] into a chunk. [param records] must be in tick
-## order and non-empty; the recorder guarantees both.
-##
-## A compressor that does not make the chunk smaller is not used for it. A chunk of three
-## small random payloads can come out of zstd larger than it went in, and storing it raw
-## costs one byte of mode rather than a few dozen of framing.
+## Encodes and compresses [param records] (tick order, non-empty) into a chunk.
+## Stored raw when compression does not shrink it (tiny random payloads can grow).
 static func build(records: Array[DotReplayRecord], compression_mode: int) -> DotReplayChunk:
 	var c := DotReplayChunk.new()
 	c.first_tick = records[0].tick
@@ -133,11 +118,8 @@ static func parse_prefix(bytes: PackedByteArray) -> DotResult:
 	return DotResult.success([c, stored_size])
 
 
-## Decompresses and decodes the records.
-##
-## [param max_raw_bytes] bounds the allocation BEFORE decompression. The declared raw size
-## is attacker-controlled in an unkeyed file, and [method PackedByteArray.decompress]
-## allocates whatever it is told to — a forty-byte chunk can declare four gigabytes.
+## Decompresses and decodes the records. [param max_raw_bytes] bounds the allocation before
+## decompressing, because the declared raw size is attacker-controlled in an unkeyed file.
 func decode_records(max_raw_bytes: int) -> DotResult:
 	if raw_size > max_raw_bytes:
 		return DotResult.fail(

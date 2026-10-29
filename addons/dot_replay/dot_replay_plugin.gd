@@ -2,10 +2,7 @@
 extends EditorPlugin
 
 ## Editor entry point for dot-replay. Registers inspector types only.
-##
-## No autoloads: a server records one match while a moderator's tool plays back another,
-## and a clip being saved from the ring must not share state with either. Every piece is
-## an object the host builds and owns.
+## No autoloads: a recorder, a playback tool and a ring clip must not share state.
 
 const _ICON := "res://addons/dot_replay/icon_placeholder.svg"
 

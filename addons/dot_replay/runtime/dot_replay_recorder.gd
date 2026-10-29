@@ -1,37 +1,9 @@
 class_name DotReplayRecorder
 extends RefCounted
 
-## The front door: what the server decided, tick by tick, on named channels.
-##
-## [codeblock]
-## var rec := DotReplayRecorder.new()
-## rec.configure(config, 64)
-## rec.keyframe_fn = func(_tick: int) -> Variant: return game.capture_state()
-## rec.ring = DotReplayRing.new()                  # optional: keep the last minute
-## rec.start(DotReplayHeader.make("arena", "dm_box", 64), config.path_for(header))
-##
-## # every server tick, BEFORE anything of that tick is recorded:
-## rec.advance(tick)
-## rec.record_value(tick, &"events", {"kill": [3, 7]})
-## rec.record(tick, &"snapshot", snapshot_bytes)
-##
-## rec.stop()                                      # writes the index; returns evidence
-## [/codeblock]
-##
-## [b]What goes in is what the server DECIDED, not what a client saw.[/b] A demo recorded
-## from the authority is the one version of the match nobody's latency or interpolation
-## has touched, which is what makes it evidence. A client-side recording is a different
-## thing (it is what that client believed) and this addon does not pretend otherwise.
-##
-## [b]Why [method advance] is called at the top of the tick.[/b] A keyframe means "the
-## state after everything recorded before it". Asking the game for one before any of the
-## tick's records have been written is the only moment at which the game's live state and
-## the stream agree without the game having to know anything about the recorder; asking
-## halfway through a tick would capture changes the stream has not seen yet, and a seek
-## to that tick would apply them twice.
-##
-## Not a [Node]: it has no per-frame work of its own, a server drives it from its own tick,
-## and a suite drives it with no scene tree at all.
+## The front door: what the server decided, tick by tick, on named channels. Not a Node.
+## Call [method advance] at the top of each tick, before that tick's records, so a keyframe is the
+## state after everything recorded before it. Records the authority's view, not a client's.
 
 const CHANNEL := "replay"
 

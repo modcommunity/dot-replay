@@ -1,27 +1,16 @@
 class_name DotReplayWriter
 extends RefCounted
 
-## Streams chunks to a file, one flushed chunk at a time, and finishes it with an index.
-##
-## [b]Every chunk is flushed as it is written[/b], so what is on disk is always a valid
-## prefix of the file: a header and some whole chunks, plus at worst part of the next one.
-## [DotReplayFile] reads that back up to the last whole chunk. The index and footer are
-## written only by [method finish], so their absence is how a reader knows the recorder
-## never got there.
-##
-## [b]In a browser[/b], [code]user://[/code] is a mirror of IndexedDB that the engine
-## persists on its own schedule, and a tab closed before it does loses what was written.
-## So every flushed chunk is followed by [method DotWeb.sync_filesystem] — the same
-## promise, one chunk lost at most, has to hold there too.
+## Streams chunks to a file, flushing each as written, and finishes it with an index. Disk is always
+## a valid prefix; the missing index and footer tell a reader the recorder never finished.
+## Each flush is followed by [method DotWeb.sync_filesystem] so a closed browser tab loses one chunk at most.
 
 const CHANNEL := "replay"
 
 var path: String = ""
 
 ## Refuse a chunk that would take the file past this many bytes. 0 is unbounded.
-##
-## A recorder left running on a server that nobody restarts for a month is a disk that
-## fills; this is where it stops, cleanly, with a file that still plays.
+## Where a never-restarted server stops, cleanly, with a file that still plays.
 var max_file_bytes: int = 0
 
 var _file: FileAccess = null
@@ -162,12 +151,8 @@ func abandon() -> void:
 		_file = null
 
 
-## What a moderation record should keep about this file, once it is finished.
-##
-## The final hash is the part that matters. The file can be copied, moved and renamed; if
-## the hash recorded at the time of the punishment still matches, nobody edited it since.
-## It is a plain Dictionary so it drops straight into a punishment's evidence field
-## without this addon knowing what a punishment is.
+## What a moderation record should keep about this file once finished; the final hash proves
+## nobody edited it since. A plain Dictionary so it drops into an evidence field.
 func evidence() -> Dictionary:
 	return {
 		"replay": path,

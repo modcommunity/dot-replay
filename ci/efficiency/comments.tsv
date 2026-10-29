@@ -1,19 +1,2 @@
 # comments
 # Baselines only shrink: scripts/<gate> --update lowers or drops entries and refuses to add.
-addons/dot_replay/bridge/dot_replay_event_tap.gd::long_block	1
-addons/dot_replay/bridge/dot_replay_net_tap.gd::long_block	1
-addons/dot_replay/core/dot_replay_chunk.gd::long_block	3
-addons/dot_replay/core/dot_replay_file.gd::banner	1
-addons/dot_replay/core/dot_replay_file.gd::long_block	3
-addons/dot_replay/core/dot_replay_format.gd::long_block	4
-addons/dot_replay/core/dot_replay_header.gd::long_block	1
-addons/dot_replay/core/dot_replay_record.gd::long_block	2
-addons/dot_replay/core/dot_replay_writer.gd::long_block	3
-addons/dot_replay/dot_replay_config.gd::long_block	1
-addons/dot_replay/dot_replay_plugin.gd::long_block	1
-addons/dot_replay/runtime/dot_replay_player.gd::banner	3
-addons/dot_replay/runtime/dot_replay_player.gd::long_block	1
-addons/dot_replay/runtime/dot_replay_recorder.gd::long_block	1
-addons/dot_replay/runtime/dot_replay_ring.gd::long_block	2
-examples/replay_selftest.gd::banner	13
-examples/replay_selftest.gd::long_block	2
