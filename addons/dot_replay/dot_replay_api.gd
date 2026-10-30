@@ -7,5 +7,6 @@ extends RefCounted
 # 4: DotKillcamFraming, mp_killview_camera (DotKillViewRules.camera), DotKillViewPlayer.moment.
 # 5: DotKillViewServer, DotKillViewClient, DotKillViewClip.pack / unpack.
 # 6: DotKillcamHost, the final-killcam wrapper a game configures with hooks.
-const LEVEL := 6
+# 7: DotKillcamHost.pose_fn / apply_pose_fn / poses, mp_killview_pose_hz; kill view clip v3 (AUX 12).
+const LEVEL := 7
 const OLDEST := 1

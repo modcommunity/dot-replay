@@ -20,6 +20,7 @@ const CVAR_HZ := "mp_killview_hz"
 const CVAR_CAMERA := "mp_killview_camera"
 const CVAR_FINAL := "mp_killview_final"
 const CVAR_SKIP_GRACE := "mp_killview_skip_grace"
+const CVAR_POSE_HZ := "mp_killview_pose_hz"
 
 ## Where a killcam's camera sits: the killer's own eye, or behind the killer on a boom.
 enum Camera { EYE, BEHIND }
@@ -60,6 +61,10 @@ var final_killcam: bool = true
 ## Seconds a replay ignores skip keys, so the fire or jump that ended the match does not skip it.
 var skip_grace: float = 1.0
 
+## Body poses a client keeps per second for its replays, every bone of every player; 0 keeps none
+## (bodies replay in their clip). A 46-bone person is 812 bytes a pose: 24 KB/s at 30.
+var pose_hz: float = 30.0
+
 
 ## Frames kept per entity, from the longest clip asked for plus a second of slack.
 func history_seconds() -> float:
@@ -92,6 +97,8 @@ func cvar_specs() -> Array:
 			"description": "1 replays the match's last kill before the summary"},
 		{"name": CVAR_SKIP_GRACE, "value": str(skip_grace), "min": 0.0, "max": 5.0,
 			"description": "Seconds a replay ignores skip keys after it starts"},
+		{"name": CVAR_POSE_HZ, "value": str(pose_hz), "min": 0.0, "max": 120.0,
+			"description": "Body poses kept per second for kill replays; 0 replays bodies unposed"},
 	]
 
 
@@ -160,6 +167,8 @@ func set_cvar(cvar_name: String, value: String) -> bool:
 			return _flag(text, func(v: bool) -> void: final_killcam = v)
 		CVAR_SKIP_GRACE:
 			return _number(text, 0.0, 5.0, func(v: float) -> void: skip_grace = v)
+		CVAR_POSE_HZ:
+			return _number(text, 0.0, 120.0, func(v: float) -> void: pose_hz = v)
 		CVAR_CAMERA:
 			return _flag(text, func(v: bool) -> void: camera = Camera.BEHIND if v else Camera.EYE)
 		_:
@@ -195,7 +204,7 @@ func describe() -> Dictionary:
 		"enabled": enabled, "seconds": seconds, "lead": lead_seconds, "post": post_seconds,
 		"cursor": include_cursor, "skip": skip_allowed, "skip_action": skip_action,
 		"slowmo": slowmo, "hz": record_hz, "camera": Camera.keys()[camera],
-		"final": final_killcam, "skip_grace": skip_grace,
+		"final": final_killcam, "skip_grace": skip_grace, "pose_hz": pose_hz,
 	}
 
 

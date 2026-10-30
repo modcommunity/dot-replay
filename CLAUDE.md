@@ -37,7 +37,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `runtime/dot_killview_server.gd` | `DotKillViewServer`: the server half over the ring; the game assigns `eyes_fn` and `hold_fn`/`release_fn` (or `use_respawn_queue`); `record` / `note_kill` / `collect` (holds the respawn) / `skip` / `forget` |
 | `runtime/dot_killview_client.gd` | `DotKillViewClient`: the client half; its own camera, the killer's `crosshair`, `hide_fn`, an optional duck-typed `stage` that poses bodies; `play` / `over` / `respawn_requested` |
 | `runtime/dot_killcam_framing.gd` | `DotKillcamFraming`: the camera for a killer's eye, the eye itself or behind the killer on a `DotCameraProbe` boom looking at the victim (`mp_killview_camera`) |
-| `dot_replay_api.gd` | the API level (6: `DotKillcamHost`; 5: the server and client halves, `DotKillViewClip.pack`) |
+| `dot_replay_api.gd` | the API level (7: recorded body poses, clip v3; 6: `DotKillcamHost`; 5: the server and client halves, `DotKillViewClip.pack`) |
 | `dot_replay_config.gd` | `DotReplayConfig`: directory, chunk and keyframe sizes, compression, caps, ring; layered (`--replay-ring-seconds 300`) |
 | `bridge/dot_replay_event_tap.gd` | `DotReplayEventTap`: a dot-server event bus's `event_fired`, objects replaced by `describe()` |
 | `bridge/dot_replay_net_tap.gd` | `DotReplayNetTap`: wraps a dot-net manager's `send_fn` for one peer |

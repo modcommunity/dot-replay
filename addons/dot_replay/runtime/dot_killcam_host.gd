@@ -41,6 +41,16 @@ var state_fn: Callable = Callable()
 ## (player, feet, yaw, shown, pitch, speed, touched): poses one body. Fill `touched[player]` with what [member restore_body_fn] needs, once, before changing it.
 var place_body_fn: Callable = Callable()
 
+## Player node -> its body's pose as drawn (an opaque PackedFloat32Array, e.g. [code]DotHumanoidFigure.pose_record[/code]);
+## empty keeps none. Without it a replayed body shows whatever its clip last left.
+var pose_fn: Callable = Callable()
+
+## (player, pose a, pose b, alpha): draws a recorded pose on a body [member place_body_fn] showed.
+var apply_pose_fn: Callable = Callable()
+
+## Poses kept per second when there are no [member rules] (they say `mp_killview_pose_hz`); 0 keeps none.
+var pose_hz: float = 30.0
+
 ## (player, touched[player]): puts back what [member place_body_fn] saved.
 var restore_body_fn: Callable = Callable()
 
@@ -76,6 +86,9 @@ var present_fn: Callable = Callable()
 var world_mask: int = 1
 
 var buffer := DotKillcamBuffer.new()
+
+## Every body's [member pose_fn] at [member pose_hz], on the same clock as [member buffer].
+var poses := DotKillcamBuffer.new()
 var killcam: DotKillcam = null
 var camera: Camera3D = null
 
@@ -83,6 +96,9 @@ var _previous_camera: Camera3D = null
 var _framing: DotKillcamFraming = null
 var _base_fov: float = 75.0
 var _hidden: Dictionary = {}
+var _posed_at: float = -INF
+# The last [method pose] call, redrawn by [method frame] over whatever the game's presentation drew since.
+var _again: Array = []
 
 
 func _ready() -> void:
@@ -107,6 +123,8 @@ func is_playing() -> bool:
 ## Records this frame. Called once a frame after every body is presented; while the replay runs
 ## it re-applies the replayed frame instead, over what presentation just drew.
 func frame() -> void:
+	if not _again.is_empty():
+		var _posed := pose(_again[0], _again[1], _again[2])
 	if is_playing():
 		if killcam.state == DotKillcam.State.WAITING:
 			_record()
@@ -168,12 +186,25 @@ func _player(id: Variant) -> Node:
 func _record() -> void:
 	if not players_fn.is_valid():
 		return
+	var now: float = now_fn.call()
 	var shot := {}
-	for p: Node in players_fn.call():
+	var players: Array = players_fn.call()
+	for p: Node in players:
 		var row: Array = state_fn.call(p)
 		if not row.is_empty():
 			shot[id_of_fn.call(p)] = row
-	var _kept := buffer.push_frame(now_fn.call(), shot)
+	var _kept := buffer.push_frame(now, shot)
+	var hz := rules.pose_hz if rules != null else pose_hz
+	if not _again.is_empty() or not pose_fn.is_valid() or hz <= 0.0 or now - _posed_at < 1.0 / hz - 0.001:
+		return
+	var held := {}
+	for p: Node in players:
+		var drawn: Variant = pose_fn.call(p)
+		if drawn is PackedFloat32Array and not (drawn as PackedFloat32Array).is_empty():
+			held[id_of_fn.call(p)] = drawn
+	poses.window_seconds = buffer.window_seconds
+	if poses.push_frame(now, held):
+		_posed_at = now
 
 
 func _on_started(_kill: Dictionary) -> void:
@@ -218,6 +249,8 @@ func pose(s: Dictionary, killer_id: Variant, victim_id: Variant) -> Dictionary:
 	var b: Dictionary = s["b"]
 	var alpha: float = s["alpha"]
 	var behind := int(camera_mode_fn.call()) == DotKillViewRules.Camera.BEHIND
+	var drawn := poses.sample(float(s["time"])) if apply_pose_fn.is_valid() and s.has("time") else {}
+	_again = [s, killer_id, victim_id]
 	var out := {}
 	for id: Variant in b:
 		var p := _player(id)
@@ -235,11 +268,25 @@ func pose(s: Dictionary, killer_id: Variant, victim_id: Variant) -> Dictionary:
 			out["aux"] = PackedFloat32Array(rb.slice(5)) if rb.size() > 5 else PackedFloat32Array()
 			out["eye"] = Transform3D(Basis.from_euler(Vector3(deg_to_rad(pitch), deg_to_rad(yaw), 0.0)), eye)
 			_place(p, feet, yaw, behind, pitch, speed)
+			if behind:
+				_apply_pose(p, id, drawn)
 		else:
 			if id == victim_id:
 				out["target"] = feet + Vector3(0.0, 1.2, 0.0)
 			_place(p, feet, yaw, alive, pitch, speed)
+			if alive:
+				_apply_pose(p, id, drawn)
 	return out
+
+
+func _apply_pose(p: Node, id: Variant, drawn: Dictionary) -> void:
+	if drawn.is_empty():
+		return
+	var pa: Variant = (drawn["a"] as Dictionary).get(id)
+	var pb: Variant = (drawn["b"] as Dictionary).get(id)
+	if pa == null and pb == null:
+		return
+	apply_pose_fn.call(p, pb if pa == null else pa, pa if pb == null else pb, float(drawn["alpha"]))
 
 
 ## The camera for a [method pose] result: the killer's eye, or behind the killer looking at the victim.
@@ -252,6 +299,7 @@ func place_camera(posed: Dictionary, base_fov: float, delta: float) -> Dictionar
 
 ## Puts back every body a replay moved.
 func restore_bodies() -> void:
+	_again.clear()
 	for p: Variant in touched:
 		if is_instance_valid(p) and restore_body_fn.is_valid():
 			restore_body_fn.call(p, touched[p])

@@ -4,7 +4,7 @@ extends Node
 ## victim plays slowed at the kill, Space skips and respawns, and the cvars drive all of it.
 
 const SECTIONS := 9
-const CHECKS := 83
+const CHECKS := 84
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -96,6 +96,11 @@ func _test_record_and_deliver() -> void:
 	_check(absf((at_kill["transform"] as Transform3D).origin.x - 10.0) < 0.1, "the camera is the killer's at the kill")
 	_check(is_equal_approx(at_kill["fov"], 75.0) and at_kill["has_cursor"], "with their fov and crosshair")
 	_check(not DotKillViewClip.to_buffer({"v": 1, "f": PackedFloat32Array([1.0, 2.0])}).ok, "a malformed clip is refused")
+	var old := PackedFloat32Array([0.0, 1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0, 75.0, 0.5, 0.5, 9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0])
+	var read: DotResult = DotKillViewClip.to_buffer({"v": 2, "f": old})
+	var old_aux: PackedFloat32Array = (read.value as DotKillcamBuffer).sample(0.0)["a"]["aux"] if read.ok else PackedFloat32Array()
+	_check(old_aux.size() == DotKillViewRing.AUX and old_aux[0] == 9.0 and old_aux[7] == 4.0 and old_aux[11] == 0.0,
+		"a version 2 clip (8 aux) still reads, its aux padded to %d" % DotKillViewRing.AUX)
 	var nan_clip := wire.duplicate()
 	var bad: PackedFloat32Array = nan_clip["f"]
 	bad[1] = NAN

@@ -13,28 +13,32 @@ const MAX_SAMPLES := 4096
 
 ## The buffer for [param clip], failing with CODE_PARSE for anything that is not a clip.
 static func to_buffer(clip: Dictionary) -> DotResult:
-	if int(clip.get("v", 0)) != 2 or not (clip.get("f") is PackedFloat32Array):
+	var version := int(clip.get("v", 0))
+	if (version != DotKillViewRing.VERSION and version != 2) or not (clip.get("f") is PackedFloat32Array):
 		return DotResult.fail(DotError.CODE_PARSE, "Not a kill view clip.")
 	var flat: PackedFloat32Array = clip["f"]
-	var n := flat.size() / DotKillViewRing.STRIDE
-	if flat.size() % DotKillViewRing.STRIDE != 0 or n == 0 or n > MAX_SAMPLES:
+	var stride := DotKillViewRing.STRIDE if version == DotKillViewRing.VERSION else 19
+	var n := flat.size() / stride
+	if flat.size() % stride != 0 or n == 0 or n > MAX_SAMPLES:
 		return DotResult.fail(DotError.CODE_PARSE, "A kill view clip of the wrong size.", str(flat.size()))
 	var buffer := DotKillcamBuffer.new()
 	buffer.window_seconds = 120.0
 	buffer.max_frames = MAX_SAMPLES
 	var use_cursor := bool(clip.get("cursor", false))
 	for i in n:
-		var o := i * DotKillViewRing.STRIDE
-		for k in DotKillViewRing.STRIDE:
+		var o := i * stride
+		for k in stride:
 			if not is_finite(flat[o + k]):
 				return DotResult.fail(DotError.CODE_PARSE, "A kill view clip holds a non-finite number.")
 		var q := Quaternion(flat[o + 4], flat[o + 5], flat[o + 6], flat[o + 7])
 		if q.length_squared() < 0.0001:
 			return DotResult.fail(DotError.CODE_PARSE, "A kill view clip holds a null rotation.")
 		var cur := Vector2(flat[o + 9], flat[o + 10]) if use_cursor else Vector2(-1.0, -1.0)
+		var aux := flat.slice(o + 11, o + stride)
+		aux.resize(DotKillViewRing.AUX)
 		var accepted := buffer.push_frame(flat[o], {
 			"p": Vector3(flat[o + 1], flat[o + 2], flat[o + 3]), "q": q.normalized(),
-			"fov": flat[o + 8], "cur": cur, "aux": flat.slice(o + 11, o + 11 + DotKillViewRing.AUX),
+			"fov": flat[o + 8], "cur": cur, "aux": aux,
 		})
 		if not accepted:
 			return DotResult.fail(DotError.CODE_PARSE, "A kill view clip out of time order.")

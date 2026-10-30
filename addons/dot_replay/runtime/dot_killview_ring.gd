@@ -7,10 +7,14 @@ extends RefCounted
 const CHANNEL := "replay.killview"
 
 ## Floats per sample: time, position 3, rotation 4, fov, cursor 2, then [constant AUX] game-defined.
-const STRIDE := 19
+## 23 floats at 30 Hz (`mp_killview_hz`) is 2760 bytes a second of view; a 4 s clip about 11 KB.
+const STRIDE := 23
 
-## Game-defined floats per sample (held weapon, aim, ammo, spread...) a presenter redraws the killer's screen from.
-const AUX := 8
+## Game-defined floats per sample (held weapon, aim, ammo, spread, the last shot's recoil...) a presenter redraws the killer's screen from.
+const AUX := 12
+
+## The clip format: 3 has [constant AUX] 12; a 2 (8 aux) still reads, padded.
+const VERSION := 3
 
 ## Most entities tracked; a view of each costs a few KiB.
 var max_entities: int = 256
@@ -103,7 +107,7 @@ func clip_for(killer: Variant, kill_time: float, info: Dictionary = {}) -> DotRe
 	if flat.is_empty():
 		return DotResult.fail(DotError.CODE_STATE, "The killer's view does not cover the kill.", str(killer))
 	return DotResult.success({
-		"v": 2, "killer": killer, "cursor": rules.include_cursor, "f": flat, "info": info,
+		"v": VERSION, "killer": killer, "cursor": rules.include_cursor, "f": flat, "info": info,
 	})
 
 

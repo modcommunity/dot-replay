@@ -8,7 +8,7 @@ Server (no autoloads; the game owns the objects):
 
 1. `var rules := DotKillViewRules.new()`, `rules.bind_cvars(module.add_cvar, DotConVar.FLAG_REPLICATED)` (cvars below). A client calls `rules.follow_cvars(client_link)`.
 2. `var kv := DotKillViewServer.new(rules)`, `kv.tick_rate = ...`, and assign `kv.eyes_fn`: `() -> [{id, transform, fov?, cursor?}]`, every living player's and bot's eye (`crosshair` 0..1 in the killer's viewport). With dot-match, `kv.use_respawn_queue(func(): return match.respawns, func(id): return game.respawn(id))` holds and releases respawns; otherwise assign `hold_fn` and `release_fn`.
-3. Each tick: `kv.record(time)`, then `for c in kv.collect(time, tick): send(c["victim"], DotKillViewClip.pack(c["clip"], c["info"], max_bytes))`. Costs nothing while `mp_killview` is 0. A clip is about 11 floats per sample, a few KiB; `pack` thins it to fit the event body.
+3. Each tick: `kv.record(time)`, then `for c in kv.collect(time, tick): send(c["victim"], DotKillViewClip.pack(c["clip"], c["info"], max_bytes))`. Costs nothing while `mp_killview` is 0. A clip is 23 floats per sample (`DotKillViewRing.STRIDE`: time, position, rotation, fov, cursor, 12 aux), 2760 bytes a second at the default 30 Hz (`mp_killview_hz`, the quality knob, 5 to 120), about 11 KB for 4 s; `pack` thins it to fit the event body.
 4. On a kill: `kv.note_kill(killer_id, victim_id, time, {"killer": name, "weapon": weapon})`. On the victim's respawn request: `kv.skip(victim_id, tick)`. On leave: `kv.forget(id)`.
 
 Client:
@@ -18,7 +18,7 @@ Client:
 3. `view.respawn_requested` fires only on a skip: send the respawn request there. `view.over(skipped)` resumes the flow.
 4. Optional `view.stage`: a final-killcam recorder with `buffer` (a `DotKillcamBuffer` holding `kill` events), `pose_at(time, killer, victim) -> {target}`, `restore_bodies()` and `world_mask`, so the bodies stand where they were and the behind camera frames the victim.
 
-5. Optional `present_fn` (on the client and on `DotKillcamHost`): called every frame with `{camera, aux, fov, cursor, behind, crosshair}` and once with `{}` at the end, so a game can draw the killer's own screen (viewmodel, crosshair, ammo) over the replay camera. `aux` is up to eight floats a game puts in `eyes_fn`'s `"aux"` (or after index 4 of the host's `state_fn` row); the clip carries them as version 2 and a held value is not blended between samples. The eye camera is the default because the victim should see the killer's screen as the killer did.
+5. Optional `present_fn` (on the client and on `DotKillcamHost`): called every frame with `{camera, aux, fov, cursor, behind, crosshair}` and once with `{}` at the end, so a game can draw the killer's own screen (viewmodel, crosshair, ammo) over the replay camera. `aux` is up to twelve floats (`DotKillViewRing.AUX`) a game puts in `eyes_fn`'s `"aux"` (or after index 4 of the host's `state_fn` row), such as the held weapon, aim, ammo, spread and the last shot's recoil, so the presenter can kick its camera through the game's own view code; the clip carries them as version 3 (a version 2 clip of eight still reads, padded) and a held value is not blended between samples. The eye camera is the default because the victim should see the killer's screen as the killer did.
 
 The lower pieces (`DotKillViewRing`, `DotKillViewPlayer`) stay public for a game that draws its own camera.
 

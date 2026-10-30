@@ -4,7 +4,7 @@ extends Node
 ## replay is slowed at the kill and bounded, a skip or a disabled killcam ends it at once.
 
 const SECTIONS := 6
-const CHECKS := 52
+const CHECKS := 55
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -289,6 +289,10 @@ func _test_host() -> void:
 	h.seconds_fn = func() -> float: return 7.0
 	h.camera_mode_fn = func() -> int: return DotKillViewRules.Camera.EYE
 	h.can_play_fn = func(d: Dictionary) -> bool: return d["killer"] != d["victim"]
+	h.pose_fn = func(_p: Node) -> PackedFloat32Array: return PackedFloat32Array([clock[0]])
+	var drawn := {}
+	h.apply_pose_fn = func(p: Node, a: PackedFloat32Array, b: PackedFloat32Array, t: float) -> void:
+		drawn[p] = lerpf(a[0], b[0], t)
 	add_child(h)
 	h.killcam.auto_process = false
 	var ended: Array = []
@@ -305,10 +309,19 @@ func _test_host() -> void:
 	h.killcam.advance(STEP)
 	_check(h.camera.current and h.camera.global_position.y > 1.0, "the host's camera takes over at the killer's eye")
 	_check(not killer.visible and victim.visible, "the killer's body is hidden in the eye view, the victim's shown")
+	_check(drawn.has(victim) and not drawn.has(killer), "a shown body is drawn in its recorded pose, the hidden killer's is not")
+	var shown_at := [0.0]
+	h.killcam.frame_drawn.connect(func(s: Dictionary) -> void: shown_at[0] = s["time"])
+	var worst := 0.0
 	var n := 0
 	while h.is_playing() and n < 1000:
 		h.killcam.advance(STEP)
+		if h.is_playing():
+			worst = maxf(worst, absf(float(drawn.get(victim, -1.0)) - shown_at[0]))
 		n += 1
+	_check(worst < 0.001, "every replayed frame's pose is the one recorded at its moment (worst %.4f s off)" % worst)
+	_check(h.poses.frame_count() < h.buffer.frame_count() * 0.6 and h.poses.frame_count() > 200,
+		"poses are kept at pose_hz (%d), not every frame (%d)" % [h.poses.frame_count(), h.buffer.frame_count()])
 	_check(ended == [false] and h.touched.is_empty(), "it ends inside the budget and clears the moved bodies")
 	_check(is_equal_approx(killer.position.x, 9.5) and killer.visible, "and restore_body_fn put the killer back")
 	ended.clear()
