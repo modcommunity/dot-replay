@@ -88,7 +88,7 @@ func play(clip: Dictionary, info: Dictionary) -> bool:
 	_previous_camera = before if before != camera else null
 	if _previous_camera != null:
 		camera.cull_mask = _previous_camera.cull_mask
-	camera.make_current()
+	# Not current yet: until the first frame the camera sits at the origin, inside the level.
 	DotLog.info(CHANNEL, "kill view started", {"killer": info.get("killer", ""), "weapon": info.get("weapon", "")})
 	if hide_fn.is_valid():
 		for n: Variant in hide_fn.call():

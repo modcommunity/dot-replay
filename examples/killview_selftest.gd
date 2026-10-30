@@ -4,7 +4,7 @@ extends Node
 ## victim plays slowed at the kill, Space skips and respawns, and the cvars drive all of it.
 
 const SECTIONS := 9
-const CHECKS := 84
+const CHECKS := 86
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -391,6 +391,21 @@ func _test_pov() -> void:
 	_check(view.crosshair.visible, "the killer's crosshair is drawn")
 	view.kv.killcam.skip()
 	_check(seen[seen.size() - 1].is_empty(), "the presenter is told when the replay is over")
+	var early := DotKillViewRing.new(rules)
+	var u := 0.0
+	while u <= 10.0:
+		var _e := early.record(2, u, Transform3D(basis, Vector3(4.0, 1.6, 1.0)), 60.0)
+		u += STEP
+	var _k := early.note_kill(2, 1, 10.0)
+	var waiting := DotKillViewClient.new()
+	port.add_child(waiting)
+	waiting.setup(rules)
+	waiting.kv.auto_process = false
+	var anchor := Camera3D.new()
+	port.add_child(anchor)
+	anchor.make_current()
+	_check(waiting.play(early.collect(11.0)[0]["clip"], {}), "a clip with no frame after the kill starts")
+	_check(not waiting.camera.current or not waiting.camera.global_position.is_zero_approx(), "while it waits its camera is not left current at the origin")
 	var thin := DotKillViewClip.unpack(DotKillViewClip.pack(clip, {}, 6000))
 	_check(thin["ok"] and DotKillViewClip.to_buffer(thin["clip"]).ok, "a thinned clip still reads back")
 	_check(DotKillViewClip.to_buffer(ring.clip_for(1, 10.0).value).value.frames_between(-INF, INF).size() > 0 if false else true, "an entity without state records zeros")
