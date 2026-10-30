@@ -4,7 +4,7 @@ extends Node
 ## replay is slowed at the kill and bounded, a skip or a disabled killcam ends it at once.
 
 const SECTIONS := 6
-const CHECKS := 55
+const CHECKS := 56
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -293,6 +293,9 @@ func _test_host() -> void:
 	var drawn := {}
 	h.apply_pose_fn = func(p: Node, a: PackedFloat32Array, b: PackedFloat32Array, t: float) -> void:
 		drawn[p] = lerpf(a[0], b[0], t)
+	var seen := {}
+	h.event_fn = func(p: Node, ra: Array, rb: Array, _t: float, is_victim: bool) -> void:
+		seen[p] = [ra.size(), rb.size(), is_victim]
 	add_child(h)
 	h.killcam.auto_process = false
 	var ended: Array = []
@@ -322,6 +325,8 @@ func _test_host() -> void:
 	_check(worst < 0.001, "every replayed frame's pose is the one recorded at its moment (worst %.4f s off)" % worst)
 	_check(h.poses.frame_count() < h.buffer.frame_count() * 0.6 and h.poses.frame_count() > 200,
 		"poses are kept at pose_hz (%d), not every frame (%d)" % [h.poses.frame_count(), h.buffer.frame_count()])
+	_check(seen.get(victim, []) == [5, 5, true] and seen.get(killer, []) == [5, 5, false],
+		"event_fn is called for every body with the rows either side, and says which is the victim")
 	_check(ended == [false] and h.touched.is_empty(), "it ends inside the budget and clears the moved bodies")
 	_check(is_equal_approx(killer.position.x, 9.5) and killer.visible, "and restore_body_fn put the killer back")
 	ended.clear()

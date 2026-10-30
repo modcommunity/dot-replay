@@ -29,6 +29,7 @@ Call `host.frame()` once a frame after the bodies are presented, `host.note_kill
 | `state_fn` | none | the drawn state of a body |
 | `place_body_fn`, `restore_body_fn` | none | pose a body, put it back; `touched` is the dictionary to save into, once, before the first change |
 | `pose_fn`, `apply_pose_fn` | unset | record each body's skeleton pose (`DotHumanoidFigure.pose_record`) and draw it back (`pose_apply(a, b, alpha)`) on every shown body; see below |
+| `event_fn` | unset | `(player, row a, row b, alpha, is_victim)` for every body each replayed frame after it is placed: the recorded rows either side of the moment (state_fn's `[feet, yaw, pitch, alive, eye height] + aux`), so a game can play what they say happened, a shot by the aux's fire counter or a death by `alive` turning false (API level 8) |
 | `can_play_fn` | always | refuse a replay (a suicide) |
 | `camera_mode_fn`, `world_mask` | the killer's eye, layer 1 | `DotKillViewRules.Camera` and the boom's mask |
 | `present_fn` | unset | `(view: Dictionary)` each frame with `{camera, aux, fov, behind}` and `{}` at the end: draw the killer's viewmodel and HUD |

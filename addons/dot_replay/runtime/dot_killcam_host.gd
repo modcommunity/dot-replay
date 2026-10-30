@@ -48,6 +48,10 @@ var pose_fn: Callable = Callable()
 ## (player, pose a, pose b, alpha): draws a recorded pose on a body [member place_body_fn] showed.
 var apply_pose_fn: Callable = Callable()
 
+## (player, row a, row b, alpha, is_victim): called for every body each replayed frame after it is placed, with the
+## recorded rows either side of the moment, so a game can play what the rows say happened (a shot, a death).
+var event_fn: Callable = Callable()
+
 ## Poses kept per second when there are no [member rules] (they say `mp_killview_pose_hz`); 0 keeps none.
 var pose_hz: float = 30.0
 
@@ -270,13 +274,20 @@ func pose(s: Dictionary, killer_id: Variant, victim_id: Variant) -> Dictionary:
 			_place(p, feet, yaw, behind, pitch, speed)
 			if behind:
 				_apply_pose(p, id, drawn)
+			_event(p, ra, rb, alpha, false)
 		else:
 			if id == victim_id:
 				out["target"] = feet + Vector3(0.0, 1.2, 0.0)
 			_place(p, feet, yaw, alive, pitch, speed)
 			if alive:
 				_apply_pose(p, id, drawn)
+			_event(p, ra, rb, alpha, id == victim_id)
 	return out
+
+
+func _event(p: Node, ra: Array, rb: Array, alpha: float, is_victim: bool) -> void:
+	if event_fn.is_valid():
+		event_fn.call(p, ra, rb, alpha, is_victim)
 
 
 func _apply_pose(p: Node, id: Variant, drawn: Dictionary) -> void:
