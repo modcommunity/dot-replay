@@ -76,7 +76,7 @@ func collect(now: float) -> Array[Dictionary]:
 		if res.ok:
 			out.append({"victim": p["victim"], "killer": p["killer"], "clip": res.value})
 		else:
-			DotLog.debug(CHANNEL, "kill clip dropped", {"killer": str(p["killer"]), "why": res.message})
+			DotLog.debug(CHANNEL, "kill clip dropped", {"killer": str(p["killer"]), "why": res.error.message})
 	_pending = keep
 	return out
 
