@@ -43,7 +43,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `bridge/dot_replay_net_tap.gd` | `DotReplayNetTap`: wraps a dot-net manager's `send_fn` for one peer |
 | `examples/replay_selftest.tscn` | the suite; files only under `user://dot_replay_selftest`, emptied first |
 | `examples/replay.yml` | the documented example (defaults; copy to `cfg/addons/dot_replay/`, not shipped live so it cannot shadow the flat shim); `DotReplayConfig.user_cfg_entry()` is the `user_cfg_files` entry for the player tier |
-| `examples/net_selftest.tscn` | the net tap against a real dot-net server and clients: record, replay into a fresh client, counts, order, payload hash, a mid-stream joiner (16 checks; needs `ln -s ../../dot-net/addons/dot_net addons/dot_net`, gitignored) |
+| `examples/net_selftest.tscn` | the net tap against a real dot-net server and clients: record, replay into a fresh client, counts, order, payload hash, a mid-stream joiner (needs `ln -s ../../dot-net/addons/dot_net addons/dot_net`, gitignored) |
 | `examples/killcam_selftest.tscn` | the killcam suite: the rewind's frames, the kill kept, slowed playback, the budget, a stalled stream, skip, disabled |
 | `examples/killview_selftest.tscn` | the kill view: off records nothing, a bot's view cut into a clip, playback slowed, skip action respawns, cvars, the server and client halves |
 | `examples/cfg_selftest.tscn` | `replay.yml` through `DotReplayConfig.load_cfg`: `cfg/addons/dot_replay/`, `cfg/server/addons/dot_replay/` over it, the flat `cfg/replay.yml` shim (WARN once, removed 2026-12-31) |
