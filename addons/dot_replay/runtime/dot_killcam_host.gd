@@ -1,10 +1,9 @@
 class_name DotKillcamHost
 extends Node
 
-## The final killcam a game wraps around [DotKillcamBuffer] and [DotKillcam]: records every drawn frame
-## and kill, replays the last kill at the match's end, poses the bodies and places the camera.
-## What differs per game is a hook (`state_fn`, `place_body_fn`, `restore_body_fn`, ...); see docs/killcam-host.md.
-## Player ids are any Variant (int or StringName) as long as the game uses one kind throughout.
+## The final killcam a game wraps around [DotKillcamBuffer] and [DotKillcam]: records frames and
+## kills, replays the last kill at match end. Per-game differences are hooks (`state_fn`,
+## `place_body_fn`, ...; see docs/killcam-host.md). Player ids are any one Variant kind.
 
 var log_channel := "dot.killcam"
 
