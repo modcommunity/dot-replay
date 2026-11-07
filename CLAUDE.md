@@ -52,7 +52,7 @@ Paths except `examples/` are in `addons/dot_replay/`.
 
 ## Running and testing
 
-The family's two steps ([game-dev/CLAUDE.md](../../CLAUDE.md#validating-anything)), then `timeout 120 godot --headless --path . res://examples/replay_selftest.tscn`; stderr should be empty. The section to keep above all is "Seeking reaches exactly the state linear playback does": seeks and linear playback compared against the state the match actually had at each tick. `CHECKS` is counted from the file; update it when you add a check.
+The family's two steps ([family CLAUDE.md](../../CLAUDE.md#validating-anything)), then `timeout 120 godot --headless --path . res://examples/replay_selftest.tscn`; stderr should be empty. The section to keep above all is "Seeking reaches exactly the state linear playback does": seeks and linear playback compared against the state the match actually had at each tick. `CHECKS` is counted from the file; update it when you add a check.
 
 ## Rules that bite
 
