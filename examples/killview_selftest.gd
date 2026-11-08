@@ -4,7 +4,7 @@ extends Node
 ## victim plays slowed at the kill, Space skips and respawns, and the cvars drive all of it.
 
 const SECTIONS := 10
-const CHECKS := 92
+const CHECKS := 94
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -380,6 +380,8 @@ func _test_client() -> void:
 	view.setup(rules)
 	view.kv.auto_process = false
 	view.hide_fn = func() -> Array: return [hud]
+	var stage := _StubStage.new()
+	view.stage = stage
 	var ended := []
 	view.over.connect(func(skipped: bool) -> void: ended.append(skipped))
 	var asked := [0]
@@ -388,7 +390,9 @@ func _test_client() -> void:
 	view.kv.advance(0.5)
 	view.kv.advance(0.5)
 	_check(view.camera.current and not hud.visible and view.crosshair.visible, "its camera is current, the HUD hidden, the crosshair drawn")
+	_check(stage.restores == 0, "the stage's bodies stay posed while the replay runs (restored 0 times)")
 	view.kv.killcam.skip()
+	_check(stage.restores == 1, "and are put back exactly once, when the replay ends")
 	_check(ended == [true] and asked[0] == 1 and previous.current and hud.visible and not view.crosshair.visible, "a skip asks for the respawn and restores everything")
 	var quiet := DotKillViewClient.new()
 	port.add_child(quiet)
@@ -451,6 +455,14 @@ func _test_pov() -> void:
 	_check(DotKillViewClip.to_buffer(ring.clip_for(1, 10.0).value).value.frames_between(-INF, INF).size() > 0 if false else true, "an entity without state records zeros")
 	port.queue_free()
 	_done()
+
+
+## A stage that only counts how often its bodies are put back.
+class _StubStage extends RefCounted:
+	var restores := 0
+
+	func restore_bodies() -> void:
+		restores += 1
 
 
 func _section(title: String) -> void:
