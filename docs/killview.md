@@ -20,6 +20,8 @@ Client:
 
 5. Optional `present_fn` (on the client and on `DotKillcamHost`): called every frame with `{camera, aux, fov, cursor, behind, crosshair}` and once with `{}` at the end, so a game can draw the killer's own screen (viewmodel, crosshair, ammo) over the replay camera. `aux` is up to twelve floats (`DotKillViewRing.AUX`) a game puts in `eyes_fn`'s `"aux"` (or after index 4 of the host's `state_fn` row), such as the held weapon, aim, ammo, spread and the last shot's recoil, so the presenter can kick its camera through the game's own view code; the clip carries them as version 3 (a version 2 clip of eight still reads, padded) and a held value is not blended between samples. The eye camera is the default because the victim should see the killer's screen as the killer did.
 
+Standalone (offline) games have no KILLVIEW message: wrap the server in `DotKillViewSolo.new(server)`, set `local_id_fn` (the local player's id, or null), `tick_fn` and `deliver_fn(clip, info)` (calls the client's `play`), call `solo.tick(tick)` once per game tick, `solo.note_kill(killer, victim, info)` on a death and `solo.skip()` from `respawn_requested`. Only the local player's clip is delivered.
+
 The lower pieces (`DotKillViewRing`, `DotKillViewPlayer`) stay public for a game that draws its own camera.
 
 ## Cvars
