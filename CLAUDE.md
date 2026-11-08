@@ -35,6 +35,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `runtime/dot_killview_clip.gd` | `DotKillViewClip`: a clip as a `DotKillcamBuffer`; `view_at(sample)` |
 | `runtime/dot_killview_player.gd` | `DotKillViewPlayer`: client; plays a clip through `DotKillcam`; `moment` (seconds from the kill, for the game to pose its bodies) / `view` / `finished` / `respawn_requested` |
 | `runtime/dot_killview_server.gd` | `DotKillViewServer`: the server half over the ring; the game assigns `eyes_fn` and `hold_fn`/`release_fn` (or `use_respawn_queue`); `record` / `note_kill` / `collect` (holds the respawn) / `skip` / `forget` |
+| `runtime/dot_killview_solo.gd` | `DotKillViewSolo`: the offline game's per-tick record and delivery over a `DotKillViewServer`; the local victim's clip goes to `deliver_fn`, `note_kill` / `skip` |
 | `runtime/dot_killview_client.gd` | `DotKillViewClient`: the client half; its own camera, the killer's `crosshair`, `hide_fn`, an optional duck-typed `stage` that poses bodies; `play` / `over` / `respawn_requested` |
 | `runtime/dot_killcam_framing.gd` | `DotKillcamFraming`: the camera for a killer's eye, the eye itself or behind the killer on a `DotCameraProbe` boom looking at the victim (`mp_killview_camera`) |
 | `dot_replay_api.gd` | the API level (7: recorded body poses, clip v3; 6: `DotKillcamHost`; 5: the server and client halves, `DotKillViewClip.pack`) |

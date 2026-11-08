@@ -3,8 +3,8 @@ extends Node
 ## The kill view: nothing is recorded while off, a killer's view (a bot's too) is cut into a clip the
 ## victim plays slowed at the kill, Space skips and respawns, and the cvars drive all of it.
 
-const SECTIONS := 9
-const CHECKS := 86
+const SECTIONS := 10
+const CHECKS := 92
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -22,6 +22,7 @@ func _ready() -> void:
 	_test_cvars()
 	_test_framing()
 	_test_server()
+	_test_solo()
 	_test_client()
 	_test_pov()
 
@@ -321,6 +322,45 @@ func _test_server() -> void:
 	var back := DotKillViewClip.unpack(body)
 	_check(body.size() <= 600 and bool(back["ok"]) and DotKillViewClip.to_buffer(back["clip"]).ok, "a clip packs into a capped event body and back (%d bytes)" % body.size())
 	_check(not bool(DotKillViewClip.unpack(var_to_bytes([1, 2, 3]))["ok"]), "a bad body is refused")
+	_done()
+
+
+func _test_solo() -> void:
+	_section("The solo helper delivers only the local player's clip, and its skip respawns")
+	var rules := _rules(true)
+	var server := DotKillViewServer.new(rules)
+	server.tick_rate = 60
+	var tick := [0]
+	server.eyes_fn = func() -> Array:
+		return [{"id": 1, "transform": Transform3D()}, {"id": 2, "transform": Transform3D(Basis(), Vector3(1, 1.6, 0))}]
+	var waiting := {1: 0, 2: 0}
+	server.hold_fn = func(victim: Variant, until: int) -> int:
+		if not waiting.has(victim):
+			return -1
+		waiting[victim] = until
+		return until
+	server.release_fn = func(victim: Variant) -> bool: return waiting.erase(victim)
+	var solo := DotKillViewSolo.new(server)
+	var got := []
+	solo.local_id_fn = func() -> Variant: return 1
+	solo.tick_fn = func() -> int: return tick[0]
+	solo.deliver_fn = func(clip: Dictionary, info: Dictionary) -> void: got.append([clip, info])
+	for i in 660:
+		tick[0] = i
+		solo.tick(i)
+	tick[0] = 660
+	_check(solo.note_kill(2, 1, {"killer": "Two"}).ok and solo.note_kill(1, 2, {"killer": "One"}).ok, "both deaths are noted at the current tick")
+	for i in range(660, 900):
+		tick[0] = i
+		solo.tick(i)
+	_check(got.size() == 1, "only the local victim's clip is delivered (%d)" % got.size())
+	_check(got.size() == 1 and (got[0][1] as Dictionary).get("killer") == "Two", "with the killer's info")
+	_check(server.is_held(1) and server.is_held(2), "every victim's respawn is held")
+	_check(solo.skip() and not waiting.has(1), "the local skip respawns the local player")
+	var off := DotKillViewSolo.new(DotKillViewServer.new(_rules(false)))
+	off.deliver_fn = func(_c: Dictionary, _i: Dictionary) -> void: got.append(0)
+	off.tick(10)
+	_check(not off.enabled() and got.size() == 1, "off records and delivers nothing")
 	_done()
 
 
