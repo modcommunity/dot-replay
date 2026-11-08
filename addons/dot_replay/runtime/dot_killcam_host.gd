@@ -123,16 +123,16 @@ func is_playing() -> bool:
 	return killcam != null and killcam.is_active()
 
 
-## Records this frame. Called once a frame after every body is presented; while the replay runs
-## it re-applies the replayed frame instead, over what presentation just drew.
+## Records this frame. Called once a frame after every body is presented; while a replay runs
+## it re-applies the replayed frame over what presentation just drew. The record is taken first,
+## of the live bodies: taken after, it would store the replayed positions as the present, and the
+## next replay (a second death inside the buffer's window) would pose bodies where they stood in
+## the first one.
 func frame() -> void:
+	if not is_playing() or killcam.state == DotKillcam.State.WAITING:
+		_record()
 	if not _again.is_empty():
 		var _posed := pose(_again[0], _again[1], _again[2])
-	if is_playing():
-		if killcam.state == DotKillcam.State.WAITING:
-			_record()
-		return
-	_record()
 
 
 ## A kill this client was told about.
