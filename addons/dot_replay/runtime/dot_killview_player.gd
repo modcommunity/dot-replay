@@ -54,6 +54,7 @@ func play_clip(clip: Dictionary, info: Dictionary = {}) -> DotResult:
 		killcam.finished.connect(_on_finished)
 		add_child(killcam)
 	killcam.auto_process = auto_process
+	killcam.wait_for_frames = false
 	killcam.max_seconds = rules.seconds
 	killcam.pre_seconds = rules.lead_seconds
 	killcam.post_seconds = rules.post_seconds

@@ -55,6 +55,10 @@ var banner: DotKillcamBanner = null
 ## Weapon id -> Texture2D or null, handed to the banner it builds; null keeps the text only.
 var icon_provider: Callable = Callable()
 
+## False when the buffer already holds the whole clip (a recorded kill view): start at once, never wait for frames
+## that will not come while the banner covers the live scene.
+var wait_for_frames: bool = true
+
 var buffer: DotKillcamBuffer = null
 var state: State = State.IDLE
 
@@ -185,7 +189,7 @@ func _try_start() -> void:
 	var wanted_end := _kill_time + post_seconds
 	var budget_left := max_seconds - _elapsed
 	# Waits past post_seconds only by a margin: a stalled stream must not hold the match's end.
-	if buffer.newest_time() < wanted_end and _waited < post_seconds + 0.5 and budget_left > 0.5:
+	if wait_for_frames and buffer.newest_time() < wanted_end and _waited < post_seconds + 0.5 and budget_left > 0.5:
 		return
 	_to = minf(wanted_end, buffer.newest_time())
 	_from = maxf(_kill_time - pre_seconds, buffer.oldest_time())
