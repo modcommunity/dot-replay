@@ -117,9 +117,15 @@ func _evict(now: float) -> void:
 	while drop + 1 < _times.size() and _times[drop + 1] <= cut:
 		drop += 1
 	drop = maxi(drop, _times.size() - max_frames)
-	if drop > 0:
+	# Usually one frame per push: remove_at(0) moves the tail down in place, where slice() allocates and copies
+	# (and counts every element again) all of the window, at every drawn frame of every recorded body.
+	if drop > 8:
 		_times = _times.slice(drop)
 		_frames = _frames.slice(drop)
+	else:
+		for _i in drop:
+			_times.remove_at(0)
+			_frames.remove_at(0)
 	while not _events.is_empty() and (float(_events[0]["time"]) < cut or _events.size() > max_events):
 		_events.pop_front()
 
