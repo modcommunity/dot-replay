@@ -3,8 +3,8 @@ extends Node
 ## The kill view: nothing is recorded while off, a killer's view (a bot's too) is cut into a clip the
 ## victim plays slowed at the kill, Space skips and respawns, and the cvars drive all of it.
 
-const SECTIONS := 10
-const CHECKS := 94
+const SECTIONS := 11
+const CHECKS := 97
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -25,6 +25,7 @@ func _ready() -> void:
 	_test_solo()
 	_test_client()
 	_test_pov()
+	_test_native_rows()
 
 	print("")
 	print("%d sections, %d passed, %d failed" % [_section_count, _passed, _failed])
@@ -455,6 +456,76 @@ func _test_pov() -> void:
 	_check(DotKillViewClip.to_buffer(ring.clip_for(1, 10.0).value).value.frames_between(-INF, INF).size() > 0 if false else true, "an entity without state records zeros")
 	port.queue_free()
 	_done()
+
+
+func _test_native_rows() -> void:
+	_section("dot-sim's native track keeps the script's rows to the bit")
+	var native := DotKillViewRing.native_track_available()
+	if not native:
+		print("   (dot-sim's %s is not loaded: the script path only)" % DotKillViewRing.NATIVE_TRACK_CLASS)
+	var rules := _rules(true)
+	rules.include_cursor = true
+	var was := DotKillViewRing.native_track
+	DotKillViewRing.native_track = false
+	var script_ring := DotKillViewRing.new(rules)
+	var script_out := _record_seeded(script_ring)
+	DotKillViewRing.native_track = true
+	var native_ring := DotKillViewRing.new(rules)
+	var native_out := _record_seeded(native_ring)
+	DotKillViewRing.native_track = was
+	var kinds := {}
+	for id: Variant in native_ring._tracks:
+		kinds[native_ring._tracks[id].get_class() if native_ring._tracks[id].get_script() == null else "script"] = true
+	_check(kinds.has(String(DotKillViewRing.NATIVE_TRACK_CLASS)) == native and kinds.size() == 1,
+			"the native class holds every track when loaded (%s)" % str(kinds.keys()))
+	_check(script_out == native_out, "both take and drop the same samples (%d taken)" % script_out.count(true))
+	var differ := 0
+	var rows := 0
+	for id: Variant in script_ring._tracks:
+		var a: Object = script_ring._tracks[id]
+		var b: Object = native_ring._tracks.get(id)
+		if b == null or a.samples() != b.samples():
+			differ += 1
+			continue
+		for i: int in a.samples():
+			rows += 1
+			var ta: float = a.time_at(i)
+			var tb: float = b.time_at(i)
+			var ra: PackedFloat32Array = a.row_at(i)
+			var rb: PackedFloat32Array = b.row_at(i)
+			if ra.to_byte_array() != rb.to_byte_array() or var_to_bytes(ta) != var_to_bytes(tb):
+				differ += 1
+	_check(differ == 0 and rows > 1000, "every row and time is the same bits (%d rows, %d differ)" % [rows, differ])
+	_done()
+
+
+## Seeded views into [param ring]: turned, scaled, mirrored and skewed bases, odd fovs, aux of
+## every length, some too soon; what each record answered.
+func _record_seeded(ring: DotKillViewRing) -> Array[bool]:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261114
+	var out: Array[bool] = []
+	var t := 0.0
+	for step in 400:
+		t += 1.0 / 60.0 + (rng.randf() * 0.004 if step % 7 == 0 else 0.0)
+		for id in 24:
+			var b := Basis.from_euler(Vector3(rng.randf_range(-PI, PI), rng.randf_range(-PI, PI), rng.randf_range(-PI, PI)))
+			match id % 6:
+				1:
+					b = b.scaled(Vector3(rng.randf_range(0.2, 3.0), rng.randf_range(0.2, 3.0), rng.randf_range(0.2, 3.0)))
+				2:
+					b = b.scaled(Vector3(-1.0, 1.0, 1.0))
+				3:
+					b.x += Vector3(rng.randf_range(-0.3, 0.3), rng.randf_range(-0.3, 0.3), 0.0)
+				4:
+					b = Basis.from_euler(Vector3(rng.randf_range(-1.5, 1.5), rng.randf_range(-PI, PI), 0.0))
+			var aux := PackedFloat32Array()
+			for k in (step + id) % 16:
+				aux.append(rng.randf_range(-100.0, 100.0))
+			var at := Vector3(rng.randf_range(-500.0, 500.0), rng.randf_range(-50.0, 50.0), rng.randf_range(-500.0, 500.0))
+			var cursor := Vector2(rng.randf(), rng.randf())
+			out.append(ring.record("e%d" % id if id % 2 == 0 else id, t, Transform3D(b, at), rng.randf_range(50.0, 120.0), cursor, aux))
+	return out
 
 
 ## A stage that only counts how often its bodies are put back.

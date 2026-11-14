@@ -19,6 +19,15 @@ const VERSION := 3
 ## Most entities tracked; a view of each costs a few KiB.
 var max_entities: int = 256
 
+## dot-sim's class holding one entity's samples natively (rows bit-identical to [method _Track.record]),
+## reached by name so this addon loads without the extension.
+const NATIVE_TRACK_CLASS := &"DotSimKillViewTrack"
+
+## Hold each new entity's samples in [constant NATIVE_TRACK_CLASS] when it is loaded; false keeps
+## the script (the A/B baseline). The web never has it.
+static var native_track := true
+static var _native_known := -1
+
 var rules: DotKillViewRules = null
 
 var _tracks: Dictionary = {}
@@ -34,23 +43,32 @@ func _init(p_rules: DotKillViewRules = null) -> void:
 func record(id: Variant, time: float, xform: Transform3D, fov: float, cursor: Vector2 = Vector2(0.5, 0.5), aux: PackedFloat32Array = PackedFloat32Array()) -> bool:
 	if not rules.enabled:
 		return false
-	var track: _Track = _tracks.get(id)
+	# A _Track or a NATIVE_TRACK_CLASS: the same methods.
+	var track: Object = _tracks.get(id)
 	if track == null:
 		if _tracks.size() >= max_entities:
 			return false
-		track = _Track.new(maxi(int(ceil(rules.history_seconds() * rules.record_hz)) + 2, 4))
+		track = _new_track(maxi(int(ceil(rules.history_seconds() * rules.record_hz)) + 2, 4))
 		_tracks[id] = track
-	if track.count > 0 and time - track.newest() < 1.0 / rules.record_hz - 0.0001:
+	if track.samples() > 0 and time - track.newest() < 1.0 / rules.record_hz - 0.0001:
 		return false
-	var q := xform.basis.orthonormalized().get_rotation_quaternion()
-	var c := cursor if rules.include_cursor else Vector2.ZERO
-	var row := PackedFloat32Array([
-		0.0, xform.origin.x, xform.origin.y, xform.origin.z, q.x, q.y, q.z, q.w, fov, c.x, c.y,
-	])
-	for k in AUX:
-		row.append(aux[k] if k < aux.size() else 0.0)
-	track.push(time, row)
+	track.record(time, xform, fov, cursor if rules.include_cursor else Vector2.ZERO, aux)
 	return true
+
+
+## Whether the dot_sim extension provides [constant NATIVE_TRACK_CLASS]; asked once.
+static func native_track_available() -> bool:
+	if _native_known < 0:
+		_native_known = 1 if ClassDB.class_exists(NATIVE_TRACK_CLASS) else 0
+	return _native_known == 1
+
+
+func _new_track(cap: int) -> Object:
+	if native_track and native_track_available():
+		var native: Object = ClassDB.instantiate(NATIVE_TRACK_CLASS)
+		native.call(&"setup", cap)
+		return native
+	return _Track.new(cap)
 
 
 ## Remembers a death so [method collect] can send the clip once [member DotKillViewRules.post_seconds]
@@ -84,15 +102,15 @@ func collect(now: float) -> Array[Dictionary]:
 ## The wire form of [param killer]'s view around [param kill_time]: plain Variants (no objects),
 ## times relative to the kill, ready for [method DotKillViewClip.to_buffer].
 func clip_for(killer: Variant, kill_time: float, info: Dictionary = {}) -> DotResult:
-	var track: _Track = _tracks.get(killer)
-	if track == null or track.count == 0:
+	var track: Object = _tracks.get(killer)
+	if track == null or track.samples() == 0:
 		return DotResult.fail(DotError.CODE_STATE, "No recorded view for the killer.", str(killer))
 	var from := kill_time - rules.lead_seconds
 	var to := kill_time + rules.post_seconds
 	var flat := PackedFloat32Array()
 	var prev := -1
-	for i in track.count:
-		var t := track.time_at(i)
+	for i: int in track.samples():
+		var t: float = track.time_at(i)
 		if t < from:
 			prev = i
 			continue
@@ -125,16 +143,16 @@ func entity_count() -> int:
 
 
 func sample_count(id: Variant) -> int:
-	var track: _Track = _tracks.get(id)
-	return 0 if track == null else track.count
+	var track: Object = _tracks.get(id)
+	return 0 if track == null else track.samples()
 
 
 func pending_count() -> int:
 	return _pending.size()
 
 
-func _append(flat: PackedFloat32Array, track: _Track, index: int, kill_time: float) -> void:
-	var row := track.row_at(index)
+func _append(flat: PackedFloat32Array, track: Object, index: int, kill_time: float) -> void:
+	var row: PackedFloat32Array = track.row_at(index)
 	row[0] = track.time_at(index) - kill_time
 	flat.append_array(row)
 
@@ -151,7 +169,7 @@ func describe_lines() -> PackedStringArray:
 	])
 
 
-## One entity's samples in a fixed-size ring, oldest overwritten.
+## One entity's samples in a fixed-size ring, oldest overwritten; [constant NATIVE_TRACK_CLASS] is its twin.
 class _Track:
 	var count: int = 0
 	var _cap: int
@@ -163,6 +181,20 @@ class _Track:
 		_cap = cap
 		_times.resize(cap)
 		_data.resize(cap * STRIDE)
+
+	func samples() -> int:
+		return count
+
+	## Stores [param xform]'s view as the newest sample: origin, rotation, fov, cursor, then
+	## [constant AUX] floats of [param aux] (zero-padded).
+	func record(time: float, xform: Transform3D, fov: float, cursor: Vector2, aux: PackedFloat32Array) -> void:
+		var q := xform.basis.orthonormalized().get_rotation_quaternion()
+		var row := PackedFloat32Array([
+			0.0, xform.origin.x, xform.origin.y, xform.origin.z, q.x, q.y, q.z, q.w, fov, cursor.x, cursor.y,
+		])
+		for k in AUX:
+			row.append(aux[k] if k < aux.size() else 0.0)
+		push(time, row)
 
 	func push(time: float, row: PackedFloat32Array) -> void:
 		var slot := (_start + count) % _cap

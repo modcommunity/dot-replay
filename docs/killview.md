@@ -24,6 +24,8 @@ Standalone (offline) games have no KILLVIEW message: wrap the server in `DotKill
 
 The lower pieces (`DotKillViewRing`, `DotKillViewPlayer`) stay public for a game that draws its own camera.
 
+With dot-sim's native library loaded (`DotSimKillViewTrack`, its `killview` module), each entity's ring builds and stores its rows natively, the same bits as the script `_Track` (`examples/killview_selftest`, "dot-sim's native track keeps the script's rows to the bit"); `DotKillViewRing.native_track = false` keeps the script path. Without the library (the web build), the script path runs unchanged.
+
 ## Cvars
 
 | Cvar | Default | |
