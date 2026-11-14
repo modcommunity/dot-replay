@@ -5,7 +5,7 @@ extends "res://examples/selftest/replay_base.gd"
 ## Files go under [code]user://dot_replay_selftest[/code], emptied first.
 
 const SECTIONS := 12
-const CHECKS := 111
+const CHECKS := 112
 
 
 func _ready() -> void:
@@ -536,10 +536,9 @@ func _test_timing() -> void:
 	player.poll()
 	_check(player.position_tick() == 128, "resumed, time counts from the resume, not from the pause (%d)" % player.position_tick())
 
-	player.set_speed(100.0)
-	_check(is_equal_approx(player.speed(), 8.0), "speed is clamped to 8x")
-	player.set_speed(0.01)
-	_check(is_equal_approx(player.speed(), 0.25), "and to 0.25x")
+	_check(player.set_speed(100.0) and is_equal_approx(player.speed(), 100.0), "any speed is taken, 100x included: there is no cap")
+	_check(not player.set_speed(0.0) and not player.set_speed(-1.0) and is_equal_approx(player.speed(), 100.0), "zero and negative speeds are refused and the speed stays")
+	_check(player.set_speed(0.25) and is_equal_approx(player.speed(), 0.25), "and slow speeds are taken too")
 	clock[0] = 4.25
 	player.poll()
 	_check(player.position_tick() == 144, "a second at 0.25x is 16 ticks (%d)" % player.position_tick())

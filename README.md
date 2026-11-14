@@ -67,7 +67,7 @@ player.poll()
 
 | Call | Does |
 | --- | --- |
-| `set_speed(2.0)` | Playback speed. Values are clamped to 0.25x to 8x (a fixed limit in the code). |
+| `set_speed(2.0)` | Playback speed. Default 1.0; any positive value (no upper or lower limit). Zero or a negative value is refused with an error and returns `false`. |
 | `pause()`, `resume()` | Pause and resume. |
 | `seek(tick)` | Jump to any tick. |
 | `set_channels(["chat", "events"])` | Play only these channels. |

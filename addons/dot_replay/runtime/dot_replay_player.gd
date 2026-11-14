@@ -7,8 +7,6 @@ extends Node
 
 const CHANNEL := "replay"
 
-const MIN_SPEED := 0.25
-const MAX_SPEED := 8.0
 
 ## Apply this record.
 signal record_played(record: DotReplayRecord)
@@ -122,12 +120,17 @@ func is_finished() -> bool:
 	return _done
 
 
-## Clamped to 0.25x-8x. Time already elapsed is accounted at the old speed first, so a
-## change mid-play does not jump.
-func set_speed(value: float) -> void:
+## Any positive, finite speed (1.0 is real time; no upper or lower limit). Zero, a negative
+## or a non-finite value is refused with an error and the speed is left as it was. Time
+## already elapsed is accounted at the old speed first, so a change mid-play does not jump.
+func set_speed(value: float) -> bool:
+	if not is_finite(value) or value <= 0.0:
+		push_error("DotReplayPlayer.set_speed: speed must be a positive number, got %s; keeping %s" % [value, _speed])
+		return false
 	if _playing and not _paused:
 		poll()
-	_speed = clampf(value, MIN_SPEED, MAX_SPEED)
+	_speed = value
+	return true
 
 
 func speed() -> float:

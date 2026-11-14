@@ -25,7 +25,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `core/dot_replay_file.gd` | `DotReplayFile`: the reader. Complete, truncated, or refused with `CODE_INTEGRITY` |
 | `runtime/dot_replay_recorder.gd` | `DotReplayRecorder`: `advance` / `record` / `record_value` / `keyframe` / `stop` / `save_clip`; asks `keyframe_fn` |
 | `runtime/dot_replay_ring.gd` | `DotReplayRing`: the last N seconds, from a keyframe, capped in bytes; `save()` |
-| `runtime/dot_replay_player.gd` | `DotReplayPlayer`: a `Node`; `state_reset` / `record_played` / `seeked` / `finished`, 0.25x to 8x, `seek`, `step_ticks`, a channel filter, `now_fn` |
+| `runtime/dot_replay_player.gd` | `DotReplayPlayer`: a `Node`; `state_reset` / `record_played` / `seeked` / `finished`, any positive speed, `seek`, `step_ticks`, a channel filter, `now_fn` |
 | `runtime/dot_killcam_buffer.gd` | `DotKillcamBuffer`: a client's last seconds of decoded frames and events (kills), bounded by time, frames and events; `frames_between`, `sample`, `last_event` |
 | `runtime/dot_killcam.gd` | `DotKillcam`: a `Node` that replays the last kill from a buffer, 3.5 s before to 1 s after, slowed at the kill, inside `max_seconds` (0 disables); skippable; `advance` for tests |
 | `runtime/dot_killcam_host.gd` | `DotKillcamHost`: the final-killcam wrapper every game needs (records frames and kills, replays the last at the match end, poses bodies, places the camera); a game assigns `players_fn`, `player_for_fn`, `state_fn`, `place_body_fn`, `restore_body_fn` and friends. [docs/killcam-host.md](docs/killcam-host.md) |
