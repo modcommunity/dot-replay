@@ -44,6 +44,11 @@ var place_body_fn: Callable = Callable()
 ## empty keeps none. Without it a replayed body shows whatever its clip last left.
 var pose_fn: Callable = Callable()
 
+## (player) -> bool, optional: true keeps the pose [member pose_fn] last read for this body instead of reading the
+## skeleton again, for a body that has changed no bone since (or too little to show: a far or unseen figure whose
+## animation LOD skips frames). Without it every body is read at every pose. Presentation only: it changes what a replay draws.
+var pose_unchanged_fn: Callable = Callable()
+
 ## (player, pose a, pose b, alpha): draws a recorded pose on a body [member place_body_fn] showed.
 var apply_pose_fn: Callable = Callable()
 
@@ -100,6 +105,11 @@ var _framing: DotKillcamFraming = null
 var _base_fov: float = 75.0
 var _hidden: Dictionary = {}
 var _posed_at: float = -INF
+# Each body's last pose read by [member pose_fn], id -> PackedFloat32Array, for [member pose_unchanged_fn].
+var _last_poses: Dictionary = {}
+## Poses read through [member pose_fn] and kept from the last read through [member pose_unchanged_fn].
+var poses_read: int = 0
+var poses_kept: int = 0
 # The last [method pose] call, redrawn by [method frame] over whatever the game's presentation drew since.
 var _again: Array = []
 
@@ -201,10 +211,20 @@ func _record() -> void:
 	if not _again.is_empty() or not pose_fn.is_valid() or hz <= 0.0 or now - _posed_at < 1.0 / hz - 0.001:
 		return
 	var held := {}
+	var same := pose_unchanged_fn.is_valid()
 	for p: Node in players:
+		var id: Variant = id_of_fn.call(p)
+		# A PackedFloat32Array is copy-on-write: keeping the last read again shares it, it does not copy it.
+		if same and _last_poses.has(id) and bool(pose_unchanged_fn.call(p)):
+			held[id] = _last_poses[id]
+			poses_kept += 1
+			continue
 		var drawn: Variant = pose_fn.call(p)
+		poses_read += 1
 		if drawn is PackedFloat32Array and not (drawn as PackedFloat32Array).is_empty():
-			held[id_of_fn.call(p)] = drawn
+			held[id] = drawn
+	if same:
+		_last_poses = held
 	poses.window_seconds = buffer.window_seconds
 	if poses.push_frame(now, held):
 		_posed_at = now
@@ -337,6 +357,8 @@ func _on_finished(skipped: bool) -> void:
 
 func describe_lines() -> PackedStringArray:
 	var out := buffer.describe_lines()
+	if pose_unchanged_fn.is_valid():
+		out.append("killcam poses: %d read, %d kept from the last read (body unchanged)" % [poses_read, poses_kept])
 	if killcam != null:
 		out.append_array(killcam.describe_lines())
 	return out

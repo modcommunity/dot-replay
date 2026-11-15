@@ -3,8 +3,8 @@ extends Node
 ## DotKillcamBuffer and DotKillcam: the rewind picks the right frames, the kill is kept, the
 ## replay is slowed at the kill and bounded, a skip or a disabled killcam ends it at once.
 
-const SECTIONS := 6
-const CHECKS := 56
+const SECTIONS := 7
+const CHECKS := 61
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -21,6 +21,7 @@ func _ready() -> void:
 	_test_skip_and_disabled()
 	_test_icon()
 	_test_host()
+	_test_pose_unchanged()
 
 	print("")
 	print("%d sections, %d passed, %d failed" % [_section_count, _passed, _failed])
@@ -335,6 +336,63 @@ func _test_host() -> void:
 	h.queue_free()
 	killer.queue_free()
 	victim.queue_free()
+	_done()
+
+
+func _test_pose_unchanged() -> void:
+	_section("DotKillcamHost keeps an unchanged body's last pose without reading it again")
+	var near := FakeBody.new()
+	var far := FakeBody.new()
+	add_child(near)
+	add_child(far)
+	var clock := [0.0]
+	var frame := [0]
+	var reads := {near: 0, far: 0}
+	var h := DotKillcamHost.new()
+	h.no_id = &""
+	h.players_fn = func() -> Array: return [near, far]
+	h.id_of_fn = func(p: Node) -> Variant: return &"n" if p == near else &"f"
+	h.state_fn = func(p: Node) -> Array: return [(p as Node3D).position, 0.0, 0.0, true, 1.6]
+	h.now_fn = func() -> float: return clock[0]
+	# The far body's figure moves its bones on every fourth frame only, like an animation LOD step of 4.
+	h.pose_fn = func(p: Node) -> PackedFloat32Array:
+		reads[p] += 1
+		return PackedFloat32Array([float(frame[0] - (frame[0] % 4 if p == far else 0))])
+	h.pose_unchanged_fn = func(p: Node) -> bool: return p == far and frame[0] % 4 != 0
+	add_child(h)
+	h.killcam.auto_process = false
+	h.pose_hz = 60.0
+	for i in 40:
+		frame[0] = i
+		clock[0] += STEP
+		h.frame()
+	var wrong := 0
+	for f in h.poses.frames_between(0.0, 10.0):
+		var at := int(round(float(f["time"]) / STEP)) - 1
+		var held: Dictionary = f["frame"]
+		if float((held[&"n"] as PackedFloat32Array)[0]) != float(at) or float((held[&"f"] as PackedFloat32Array)[0]) != float(at - at % 4):
+			wrong += 1
+	_check(h.poses.frame_count() == 40 and wrong == 0, "every kept pose is the one the body showed then (%d of %d wrong)" % [wrong, h.poses.frame_count()])
+	_check(reads[near] == 40, "a body that changes is read at every pose (%d)" % reads[near])
+	_check(reads[far] == 10 and h.poses_read == 50 and h.poses_kept == 30,
+		"an unchanged one only when it moved (%d reads, %d kept)" % [reads[far], h.poses_kept])
+	var far_frames := h.poses.frame_count()
+	h.pose_fn = func(p: Node) -> PackedFloat32Array:
+		return PackedFloat32Array() if p == far else PackedFloat32Array([0.0])
+	# Hidden on frame 41 (nothing read), then said unchanged: there is no last read to keep.
+	h.pose_unchanged_fn = func(p: Node) -> bool: return p != far or frame[0] != 41
+	for i in [41, 42]:
+		frame[0] = i
+		clock[0] += STEP
+		h.frame()
+	var last: Dictionary = h.poses.sample(clock[0])["b"]
+	_check(h.poses.frame_count() == far_frames + 2 and last.has(&"n") and not last.has(&"f"),
+		"a body with no pose to read keeps none, so nothing stale is carried for it")
+	_check(Array(h.describe_lines()).any(func(l: String) -> bool: return l.contains("kept from the last read")),
+		"describe_lines reports reads and kept poses")
+	h.queue_free()
+	near.queue_free()
+	far.queue_free()
 	_done()
 
 

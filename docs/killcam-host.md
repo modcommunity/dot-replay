@@ -29,6 +29,7 @@ Call `host.frame()` once a frame after the bodies are presented, `host.note_kill
 | `state_fn` | none | the drawn state of a body |
 | `place_body_fn`, `restore_body_fn` | none | pose a body, put it back; `touched` is the dictionary to save into, once, before the first change |
 | `pose_fn`, `apply_pose_fn` | unset | record each body's skeleton pose (`DotHumanoidFigure.pose_record`) and draw it back (`pose_apply(a, b, alpha)`) on every shown body; see below |
+| `pose_unchanged_fn` | unset | `(player) -> bool`: true when the body has changed no bone since `pose_fn` last read it, so that pose is kept again without a read; see below |
 | `event_fn` | unset | `(player, row a, row b, alpha, is_victim)` for every body each replayed frame after it is placed: the recorded rows either side of the moment (state_fn's `[feet, yaw, pitch, alive, eye height] + aux`), so a game can play what they say happened, a shot by the aux's fire counter or a death by `alive` turning false (API level 8) |
 | `can_play_fn` | always | refuse a replay (a suicide) |
 | `camera_mode_fn`, `world_mask` | the killer's eye, layer 1 | `DotKillViewRules.Camera` and the boom's mask |
@@ -40,5 +41,7 @@ Call `host.frame()` once a frame after the bodies are presented, `host.note_kill
 ## Bodies in their recorded pose
 
 `place_body_fn` alone gets a position, a yaw, a pitch and a speed, and a figure animated from those inside a replay frame plays a clip that has had no time to blend in: the rest pose (a T-pose). With `pose_fn` set the host keeps every body's pose in `poses`, a second buffer on the same clock, at `mp_killview_pose_hz` (`rules.pose_hz`, or `pose_hz` without rules; default 30, 0 keeps none), and calls `apply_pose_fn` after `place_body_fn` for each shown body with the two poses around the replayed moment. A dot-player-char person is 812 bytes a pose: 24 KB a second per body at 30 Hz, 8 s of 16 players about 3 MB, held on the client only and never sent.
+
+Reading a pose is one engine call per bone (Godot has no bulk getter), about 43 a person, and that is most of what recording costs. A figure under an animation LOD step (dot-player-char's `anim_step`: 2, 4 or 8 for a far, offscreen or unseen body) changes no bone on the frames it skips, so a game can set `pose_unchanged_fn` to say so and the host keeps the pose it read last (a PackedFloat32Array is shared, not copied). The host never decides this itself: without the hook every body is read at every pose. `poses_read` and `poses_kept` count both, and `describe_lines` reports them while the hook is set.
 
 `pose_at`, `restore_bodies`, `world_mask` and `buffer` are also what `DotKillViewClient.stage` expects, so the host is the kill view's stage as it stands.
