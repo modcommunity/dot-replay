@@ -80,7 +80,7 @@ Two small bridges record from other addons without depending on them:
 
 ## Settings
 
-`DotReplayConfig` is layered like every dot config: inspector defaults, then a JSON file, then the environment, then the command line. Times are in seconds.
+`DotReplayConfig` is layered like every Gamespice config: inspector defaults, then a JSON file, then the environment, then the command line. Times are in seconds.
 
 ```bash
 DOT_REPLAY_COMPRESSION=deflate <your server> --replay-ring-seconds=300
