@@ -1,4 +1,4 @@
-[![Replay - GameSpice addon](docs/banner.png)](https://moddingcommunity.com/a/261-dot-replay)
+[![Replay - GameSpice addon](docs/banner.png)](https://moddingcommunity.com/a/71-gs-replay)
 
 Records what a dedicated server decided during a match (snapshots, events, chat, commands) so the match can be played back later: to watch it, to review it, or as evidence when somebody is reported.
 
