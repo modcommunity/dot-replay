@@ -82,7 +82,7 @@ Two small bridges record from other addons without depending on them:
 
 ## Settings
 
-`DotReplayConfig` is layered like every Gamespice config: inspector defaults, then a JSON file, then the environment, then the command line. Times are in seconds.
+`DotReplayConfig` is layered like every GameSpice config: inspector defaults, then a JSON file, then the environment, then the command line. Times are in seconds.
 
 ```bash
 GS_REPLAY_COMPRESSION=deflate <your server> --replay-ring-seconds=300
@@ -106,6 +106,6 @@ Import the project once, then run `examples/replay_selftest.tscn` headless with 
 
 ## Status and licence
 
-Part of the [Gamespice](https://gamespice.net) platform: a family of Godot addons. Written with Claude Code and maintained by `gamemann`. Every addon has headless tests, but little of this has been played by real users yet, so expect rough edges and please [open an issue](https://github.com/gamespice-platform/replay/issues) when you hit one.
+Part of the [**GameSpice**](https://gamespice.net) platform: a family of Godot addons. Written with Claude Code and maintained by `gamemann`. Every addon has headless tests, but little of this has been played by real users yet, so expect rough edges and please [open an issue](https://github.com/gamespice-platform/replay/issues) when you hit one.
 
-MIT licence, see [LICENSE](LICENSE). The only closed part of the [Gamespice](https://gamespice.net) platform is the web back end; you can use your own instead of Gamespice's.
+MIT licence, see [LICENSE](LICENSE). The only closed part of the [**GameSpice**](https://gamespice.net) platform is the web back end; you can use your own instead of GameSpice's.
