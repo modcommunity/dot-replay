@@ -1,3 +1,5 @@
+[![dot-replay - GameSpice addon](docs/banner.png)](https://moddingcommunity.com/a/261-dot-replay)
+
 Records what a dedicated server decided during a match (snapshots, events, chat, commands) so the match can be played back later: to watch it, to review it, or as evidence when somebody is reported.
 
 A record is a tick, a channel name and a payload: raw bytes, or any plain value such as a Dictionary, an Array, numbers, strings or vectors. The addon never looks inside a payload, so the same format works for a shooter, a racing timer or a lobby.
