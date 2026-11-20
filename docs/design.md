@@ -1,16 +1,16 @@
 # Design
 
-Why dot-replay is shaped the way it is, and why the obvious alternative is wrong in each case. The file format itself is drawn in `DotReplayFormat`'s doc comment.
+Why GameSpice Replay is shaped the way it is, and why the obvious alternative is wrong in each case. The file format itself is drawn in `DotReplayFormat`'s doc comment.
 
 ## Why this exists
 
-Nothing else in the family replays a match. dot-timer's `DotTimerReplay` records one player's run: position and view, quantised and delta-encoded for a single body against the clock. That is the right format for a record run and the wrong one for a match, which has many bodies, events and chat, and whose state only the game can describe. dot-spectate's broadcast delay holds a few seconds of live poses in memory for a spectator and never writes anything. dot-net's snapshots are deltas per peer, meaningful only to the one client that acknowledged them. dot-moderation's `DotPunishment.evidence` is a free-form Dictionary meant to carry a demo's `evidence()`.
+Nothing else in the family replays a match. GameSpice Timer's `DotTimerReplay` records one player's run: position and view, quantised and delta-encoded for a single body against the clock. That is the right format for a record run and the wrong one for a match, which has many bodies, events and chat, and whose state only the game can describe. GameSpice Spectate's broadcast delay holds a few seconds of live poses in memory for a spectator and never writes anything. GameSpice Net's snapshots are deltas per peer, meaningful only to the one client that acknowledged them. GameSpice Moderation's `DotPunishment.evidence` is a free-form Dictionary meant to carry a demo's `evidence()`.
 
 This addon is the game-agnostic layer under all of those: a record is `(tick, channel, bytes)`, and the file format, integrity, seeking, clipping and playback timing are the same whatever the bytes mean.
 
 ## The payload is opaque
 
-A replay format that understood snapshots would be a copy of dot-net's wire format, and one that understood kills would be a copy of every game's rules. The only party that can interpret a record is the game that wrote it, so the addon moves bytes and the game folds them. That is also why the player emits and applies nothing. A payload is a `var_to_bytes` Variant decoded with `bytes_to_var`, **never** `_with_objects`, and the header and records refuse objects (`contains_object`).
+A replay format that understood snapshots would be a copy of GameSpice Net's wire format, and one that understood kills would be a copy of every game's rules. The only party that can interpret a record is the game that wrote it, so the addon moves bytes and the game folds them. That is also why the player emits and applies nothing. A payload is a `var_to_bytes` Variant decoded with `bytes_to_var`, **never** `_with_objects`, and the header and records refuse objects (`contains_object`).
 
 ## A keyframe always begins a chunk
 
@@ -43,15 +43,15 @@ Every chunk boundary and every seek assumes it. A record that arrives for an ear
 - **The header is who was there at the start.** A streaming file cannot rewrite its header. Joins and leaves are records on a channel the game chooses.
 - **The recorder is not a Node, the player is.** A server drives the recorder from its own tick and a suite drives it with no tree. The player has per-frame work, and an inspector type is useful to somebody building a review tool.
 - **The web.** Every flushed chunk is followed by `DotWeb.sync_filesystem()` when the path is under `user://`, because a browser tab closed before the engine's own sync loses what was written, and "a crash loses one chunk" has to hold there too. Nothing here needs threads.
-- **The magic is `DRPL`.** dot-timer's run replays begin `DRP1`. The suite writes that magic into a demo and checks it is refused as not-a-demo.
+- **The magic is `DRPL`.** GameSpice Timer's run replays begin `DRP1`. The suite writes that magic into a demo and checks it is refused as not-a-demo.
 
 ## The net tap records one peer, and does not solve seeking
 
-dot-net deltas each peer's snapshots against what that peer acknowledged and culls them by what it can see, so one peer's stream is a complete account of that peer's view and a mixture of two decodes as neither. Record a single observer peer. Those payloads are still deltas: a demo made from them seeks only as well as the full-state keyframes the game provides through `keyframe_fn`. Playing a recorded stream into a client `DotNetManager` is the game's code, and **this suite does not run it**: there is no dot-net here.
+GameSpice Net deltas each peer's snapshots against what that peer acknowledged and culls them by what it can see, so one peer's stream is a complete account of that peer's view and a mixture of two decodes as neither. Record a single observer peer. Those payloads are still deltas: a demo made from them seeks only as well as the full-state keyframes the game provides through `keyframe_fn`. Playing a recorded stream into a client `DotNetManager` is the game's code, and **this suite does not run it**: there is no GameSpice Net here.
 
 ## Where it runs for real
 
-dot-server-deploy's host (`TmcReplay`) keeps a ring of every server's event bus through `DotReplayEventTap`, with a roster keyframe, and saves it for an admin or a punishment. `DotReplayNetTap` is checked against a real dot-net server by `examples/net_selftest` (record, replay into a fresh client, same count, order and payload hash, a client joining mid-stream); no game records through it yet.
+GameSpice Server Deploy's host (`TmcReplay`) keeps a ring of every server's event bus through `DotReplayEventTap`, with a roster keyframe, and saves it for an admin or a punishment. `DotReplayNetTap` is checked against a real GameSpice Net server by `examples/net_selftest` (record, replay into a fresh client, same count, order and payload hash, a client joining mid-stream); no game records through it yet.
 
 ## The killcam is a separate buffer
 
@@ -61,8 +61,8 @@ A final killcam replays a client's last few seconds, so it needs decoded frames 
 
 - **A replacement for `DotTimerReplay`.** A record run wants quantised movement for one body and a small file a browser can fetch before the map loads; a match demo wants opaque channels. Both stay.
 - **Decoding netcode.** No snapshot is ever parsed here.
-- **A broadcast delay.** That is dot-spectate's, live and in memory. A ring is for saving, not for delaying a feed.
-- **Where a demo is uploaded or kept.** A punishment store, dot-cloud or a website stores the file; `evidence()` is the Dictionary they want.
+- **A broadcast delay.** That is GameSpice Spectate's, live and in memory. A ring is for saving, not for delaying a feed.
+- **Where a demo is uploaded or kept.** A punishment store, GameSpice Cloud or a website stores the file; `evidence()` is the Dictionary they want.
 - **Asymmetric signing.** HMAC with a key the server holds. A signature a third party can verify without the key is a real want for public tournament demos and needs key distribution this family does not have yet.
 - **Reverse playback.** Seeking backwards works; playing backwards would mean inverting records the addon cannot interpret.
 - **A timeline UI.** This ships no screens; `describe()` and the signals are what one would be built on.

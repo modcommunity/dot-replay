@@ -7,7 +7,7 @@ When a player dies they see the replay of their killer's view (camera, fov and c
 Server (no autoloads; the game owns the objects):
 
 1. `var rules := DotKillViewRules.new()`, `rules.bind_cvars(module.add_cvar, DotConVar.FLAG_REPLICATED)` (cvars below). A client calls `rules.follow_cvars(client_link)`.
-2. `var kv := DotKillViewServer.new(rules)`, `kv.tick_rate = ...`, and assign `kv.eyes_fn`: `() -> [{id, transform, fov?, cursor?}]`, every living player's and bot's eye (`crosshair` 0..1 in the killer's viewport). With dot-match, `kv.use_respawn_queue(func(): return match.respawns, func(id): return game.respawn(id))` holds and releases respawns; otherwise assign `hold_fn` and `release_fn`.
+2. `var kv := DotKillViewServer.new(rules)`, `kv.tick_rate = ...`, and assign `kv.eyes_fn`: `() -> [{id, transform, fov?, cursor?}]`, every living player's and bot's eye (`crosshair` 0..1 in the killer's viewport). With GameSpice Match, `kv.use_respawn_queue(func(): return match.respawns, func(id): return game.respawn(id))` holds and releases respawns; otherwise assign `hold_fn` and `release_fn`.
 3. Each tick: `kv.record(time)`, then `for c in kv.collect(time, tick): send(c["victim"], DotKillViewClip.pack(c["clip"], c["info"], max_bytes))`. Costs nothing while `mp_killview` is 0. A clip is 23 floats per sample (`DotKillViewRing.STRIDE`: time, position, rotation, fov, cursor, 12 aux), 2760 bytes a second at the default 30 Hz (`mp_killview_hz`, the quality knob, 5 to 120), about 11 KB for 4 s; `pack` thins it to fit the event body.
 4. On a kill: `kv.note_kill(killer_id, victim_id, time, {"killer": name, "weapon": weapon})`. On the victim's respawn request: `kv.skip(victim_id, tick)`. On leave: `kv.forget(id)`.
 
@@ -24,7 +24,7 @@ Standalone (offline) games have no KILLVIEW message: wrap the server in `DotKill
 
 The lower pieces (`DotKillViewRing`, `DotKillViewPlayer`) stay public for a game that draws its own camera.
 
-With dot-sim's native library loaded (`DotSimKillViewTrack`, its `killview` module), each entity's ring builds and stores its rows natively, the same bits as the script `_Track` (`examples/killview_selftest`, "dot-sim's native track keeps the script's rows to the bit"); `DotKillViewRing.native_track = false` keeps the script path. Without the library (the web build), the script path runs unchanged.
+With GameSpice Sim's native library loaded (`DotSimKillViewTrack`, its `killview` module), each entity's ring builds and stores its rows natively, the same bits as the script `_Track` (`examples/killview_selftest`, "GameSpice Sim's native track keeps the script's rows to the bit"); `DotKillViewRing.native_track = false` keeps the script path. Without the library (the web build), the script path runs unchanged.
 
 ## Cvars
 

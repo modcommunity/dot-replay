@@ -24,4 +24,4 @@ Three things no assertion was looking at:
 
 ## Built and wired into nothing
 
-dot-replay had a ring, an event tap and `evidence()` shaped for a punishment, and for a while no server built one. dot-server-deploy's `TmcReplay` is what closed that ([design](design.md#where-it-runs-for-real)).
+GameSpice Replay had a ring, an event tap and `evidence()` shaped for a punishment, and for a while no server built one. GameSpice Server Deploy's `TmcReplay` is what closed that ([design](design.md#where-it-runs-for-real)).

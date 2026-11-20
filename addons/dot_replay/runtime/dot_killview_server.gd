@@ -39,7 +39,7 @@ func _init(p_rules: DotKillViewRules = null) -> void:
 	ring = DotKillViewRing.new(rules)
 
 
-## Sets [member hold_fn] and [member release_fn] over a dot-match DotRespawnQueue (keyed by
+## Sets [member hold_fn] and [member release_fn] over a GameSpice Match DotRespawnQueue (keyed by
 ## [code]str(id)[/code]); [param queue_fn] returns it or null, [param respawn_fn] (id) -> DotResult.
 func use_respawn_queue(queue_fn: Callable, respawn_fn: Callable) -> void:
 	hold_fn = func(victim: Variant, until: int) -> int:

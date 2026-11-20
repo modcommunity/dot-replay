@@ -1,7 +1,7 @@
 @tool
 extends EditorPlugin
 
-## Editor entry point for dot-replay. Registers inspector types only.
+## Editor entry point for GameSpice Replay. Registers inspector types only.
 ## No autoloads: a recorder, a playback tool and a ring clip must not share state.
 
 const _ICON := "res://addons/dot_replay/icon_placeholder.svg"

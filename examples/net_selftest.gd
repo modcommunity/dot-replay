@@ -1,8 +1,8 @@
 extends Node
 
-## Runs DotReplayNetTap against a real dot-net server and clients in one process, records a
+## Runs DotReplayNetTap against a real GameSpice Net server and clients in one process, records a
 ## short session, plays it back into a fresh client and compares it with what was sent.
-## Needs dot-net linked (see .gitignore); every other suite here runs without it.
+## Needs GameSpice Net linked (see .gitignore); every other suite here runs without it.
 
 const SECTIONS := 1
 const CHECKS := 16

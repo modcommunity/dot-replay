@@ -123,7 +123,7 @@ func bind_cvars(add: Callable, flags: int = 0) -> Array:
 	return made
 
 
-## Follows a server's replicated values (dot-server's `DotClientLink`: `replicated_cvar(name,
+## Follows a server's replicated values (GameSpice Server's `DotClientLink`: `replicated_cvar(name,
 ## fallback)` and `replicated_cvar_changed(name, value)`). False when [param source] cannot.
 func follow_cvars(source: Object) -> bool:
 	if source == null or not is_instance_valid(source):

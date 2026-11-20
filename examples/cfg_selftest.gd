@@ -1,6 +1,6 @@
 extends Node
 
-## The yml layout of dot-replay's settings: new path, flat shim, operator layer.
+## The yml layout of GameSpice Replay's settings: new path, flat shim, operator layer.
 
 const FOLDER := "dot_replay"
 const FILE := "replay.yml"

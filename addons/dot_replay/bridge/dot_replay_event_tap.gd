@@ -2,7 +2,7 @@ class_name DotReplayEventTap
 extends RefCounted
 
 ## Records every game event a bus fires, with its data and whether a hook cancelled it.
-## Duck-typed on an [code]event_fired(event)[/code] signal so dot-server is not required.
+## Duck-typed on an [code]event_fired(event)[/code] signal so GameSpice Server is not required.
 ## Cancelled events are kept by default (what somebody tried matters for moderation); sessions in data become their [code]describe()[/code].
 
 const CHANNEL := "replay"

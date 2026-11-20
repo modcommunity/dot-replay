@@ -19,7 +19,7 @@ const VERSION := 3
 ## Most entities tracked; a view of each costs a few KiB.
 var max_entities: int = 256
 
-## dot-sim's class holding one entity's samples natively (rows bit-identical to [method _Track.record]),
+## GameSpice Sim's class holding one entity's samples natively (rows bit-identical to [method _Track.record]),
 ## reached by name so this addon loads without the extension.
 const NATIVE_TRACK_CLASS := &"DotSimKillViewTrack"
 

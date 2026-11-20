@@ -1,10 +1,10 @@
-# dot-replay
+# GameSpice Replay
 
 Match demos: what a dedicated server authoritatively decided, recorded as tick-stamped opaque records on named channels, in a chunked, compressed, hash-chained file that seeks by keyframe, survives a crash and refuses an edit.
 
 Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is specific to replays.
 
-**The distributable is `addons/dot_replay/`.** It requires [dot-core](../dot-core) and nothing else (`ln -s ../../dot-core/addons/dot_core addons/dot_core`, gitignored). dot-server and dot-net are reached by duck typing.
+**The distributable is `addons/dot_replay/`.** It requires [GameSpice Core](../dot-core) and nothing else (`ln -s ../../dot-core/addons/dot_core addons/dot_core`, gitignored). dot-server and dot-net are reached by duck typing.
 
 ## Read before
 
@@ -40,8 +40,8 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is only what is sp
 | `runtime/dot_killcam_framing.gd` | `DotKillcamFraming`: the camera for a killer's eye, the eye itself or behind the killer on a `DotCameraProbe` boom looking at the victim (`mp_killview_camera`) |
 | `dot_replay_api.gd` | the API level (7: recorded body poses, clip v3; 6: `DotKillcamHost`; 5: the server and client halves, `DotKillViewClip.pack`) |
 | `dot_replay_config.gd` | `DotReplayConfig`: directory, chunk and keyframe sizes, compression, caps, ring; layered (`--replay-ring-seconds 300`) |
-| `bridge/dot_replay_event_tap.gd` | `DotReplayEventTap`: a dot-server event bus's `event_fired`, objects replaced by `describe()` |
-| `bridge/dot_replay_net_tap.gd` | `DotReplayNetTap`: wraps a dot-net manager's `send_fn` for one peer |
+| `bridge/dot_replay_event_tap.gd` | `DotReplayEventTap`: a GameSpice Server event bus's `event_fired`, objects replaced by `describe()` |
+| `bridge/dot_replay_net_tap.gd` | `DotReplayNetTap`: wraps a GameSpice Net manager's `send_fn` for one peer |
 | `examples/replay_selftest.tscn` | the suite; files only under `user://dot_replay_selftest`, emptied first |
 | `examples/replay.yml` | the documented example (defaults; copy to `cfg/addons/dot_replay/`, not shipped live so it cannot shadow the flat shim); `DotReplayConfig.user_cfg_entry()` is the `user_cfg_files` entry for the player tier |
 | `examples/net_selftest.tscn` | the net tap against a real dot-net server and clients: record, replay into a fresh client, counts, order, payload hash, a mid-stream joiner (needs `ln -s ../../dot-net/addons/dot_net addons/dot_net`, gitignored) |
@@ -71,6 +71,6 @@ The family's two steps ([family CLAUDE.md](../../CLAUDE.md#validating-anything))
 
 ## Open items
 
-- **No game records through `DotReplayNetTap` yet.** `examples/net_selftest` runs it against a real dot-net server and plays the stream back into a client; seeking that stream still needs the game's `keyframe_fn`. [design](docs/design.md#where-it-runs-for-real)
+- **No game records through `DotReplayNetTap` yet.** `examples/net_selftest` runs it against a real GameSpice Net server and plays the stream back into a client; seeking that stream still needs the game's `keyframe_fn`. [design](docs/design.md#where-it-runs-for-real)
 
 Deliberately not here: replacing `DotTimerReplay`, decoding netcode, a broadcast delay, storage, asymmetric signing, reverse playback, a timeline UI, older format versions. [design](docs/design.md#deliberately-not-here)
