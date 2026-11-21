@@ -20,6 +20,8 @@ add_child(host)
 
 Call `host.frame()` once a frame after the bodies are presented, `host.note_kill(killer, victim, weapon)` for every kill, `host.match_ended()` at the end (false means `over` has already fired).
 
+While a replay runs, `frame()` (or `repose()` on a frame that does not record) redraws the last pose over what presentation drew. When the replay's own `frame_drawn` posed the bodies after that call on the previous frame (the host's killcam, or a kill view whose `stage` is this host, processing after the caller), the redraw is skipped: it would be drawn over again in the same frame.
+
 ## Hooks
 
 | Hook | Default | For |

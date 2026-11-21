@@ -3,8 +3,8 @@ extends Node
 ## DotKillcamBuffer and DotKillcam: the rewind picks the right frames, the kill is kept, the
 ## replay is slowed at the kill and bounded, a skip or a disabled killcam ends it at once.
 
-const SECTIONS := 7
-const CHECKS := 61
+const SECTIONS := 8
+const CHECKS := 65
 const STEP := 1.0 / 60.0
 
 var _passed := 0
@@ -22,6 +22,7 @@ func _ready() -> void:
 	_test_icon()
 	_test_host()
 	_test_pose_unchanged()
+	await _test_repose()
 
 	print("")
 	print("%d sections, %d passed, %d failed" % [_section_count, _passed, _failed])
@@ -393,6 +394,72 @@ func _test_pose_unchanged() -> void:
 	h.queue_free()
 	near.queue_free()
 	far.queue_free()
+	_done()
+
+
+func _test_repose() -> void:
+	_section("DotKillcamHost redraws the last pose over presentation, unless the replay draws after it")
+	var killer := FakeBody.new()
+	var victim := FakeBody.new()
+	add_child(killer)
+	add_child(victim)
+	var clock := [0.0]
+	var placed := [0]
+	var by_id := {&"k": killer, &"v": victim}
+	var h := DotKillcamHost.new()
+	h.no_id = &""
+	h.players_fn = func() -> Array: return [killer, victim]
+	h.player_for_fn = func(id: StringName) -> Variant: return by_id.get(id)
+	h.id_of_fn = func(p: Node) -> Variant: return &"k" if p == killer else &"v"
+	h.state_fn = func(p: Node) -> Array: return [(p as Node3D).position, 0.0, 0.0, true, 1.6]
+	h.place_body_fn = func(p: Node3D, feet: Vector3, _y: float, _shown: bool, _pi: float, _sp: float, touched: Dictionary) -> void:
+		placed[0] += 1
+		if not touched.has(p):
+			touched[p] = [p.position, p.visible]
+		p.position = feet
+	h.restore_body_fn = func(p: Node3D, saved: Array) -> void: p.position = saved[0]
+	h.now_fn = func() -> float: return clock[0]
+	h.seconds_fn = func() -> float: return 7.0
+	add_child(h)
+	h.killcam.auto_process = false
+	while clock[0] < 5.0:
+		clock[0] += STEP
+		victim.position = Vector3(clock[0], 0.0, 0.0)
+		h.frame()
+		if absf(clock[0] - 4.0) < STEP * 0.5:
+			h.note_kill(&"k", &"v", "rifle")
+	var live := victim.position
+	var _played := h.match_ended()
+	h.killcam.advance(STEP)
+	# Two frames on, the replay's last draw is not the previous frame's: the next frame() redraws.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	# A frame: the game's frame() (presentation already drawn), then the replay's own frame_drawn after it.
+	var per_frame: Array[int] = []
+	for i in 3:
+		await get_tree().process_frame
+		placed[0] = 0
+		h.frame()
+		per_frame.append(placed[0])
+		h.killcam.advance(STEP)
+	_check(per_frame == [2, 0, 0], "frame() redraws until it sees the replay draw after it, then leaves it to the replay (%s)" % [per_frame])
+	await get_tree().process_frame
+	placed[0] = 0
+	h.frame()
+	_check(placed[0] == 0, "the frame after one the replay drew, it still expects it")
+	await get_tree().process_frame
+	victim.position = Vector3(99.0, 0.0, 0.0)
+	placed[0] = 0
+	h.repose()
+	_check(placed[0] == 2 and victim.position.x < 6.0, "a frame after one with no replay draw is redrawn over what presentation drew")
+	h.skip()
+	placed[0] = 0
+	h.repose()
+	_check(placed[0] == 0 and not h.is_playing() and victim.position == live,
+		"and nothing is redrawn once the replay is over (%d placed, playing %s, %s)" % [placed[0], h.is_playing(), victim.position])
+	h.queue_free()
+	killer.queue_free()
+	victim.queue_free()
 	_done()
 
 

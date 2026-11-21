@@ -112,6 +112,11 @@ var poses_read: int = 0
 var poses_kept: int = 0
 # The last [method pose] call, redrawn by [method frame] over whatever the game's presentation drew since.
 var _again: Array = []
+# Process frame of the last [method repose], and of the last [method pose] made after it in the same frame by
+# something else (a replay's own frame_drawn): one seen last frame means the redraw would be drawn over again.
+var _reposed_at: int = -1
+var _posed_after: int = -2
+var _reposing: bool = false
 
 
 func _ready() -> void:
@@ -141,8 +146,21 @@ func is_playing() -> bool:
 func frame() -> void:
 	if not is_playing() or killcam.state == DotKillcam.State.WAITING:
 		_record()
-	if not _again.is_empty():
-		var _posed := pose(_again[0], _again[1], _again[2])
+	repose()
+
+
+## Redraws the last [method pose] over what presentation drew this frame. Skipped while the replay posing the
+## bodies (this host's killcam, a kill view's [member DotKillViewClient.stage]) did so after it last frame: it
+## runs later this frame too and draws over the redraw, which at 32 bodies is the whole cost of a pose.
+func repose() -> void:
+	var at := Engine.get_process_frames()
+	var drawn_later := _posed_after == at - 1
+	_reposed_at = at
+	if _again.is_empty() or drawn_later:
+		return
+	_reposing = true
+	var _posed := pose(_again[0], _again[1], _again[2])
+	_reposing = false
 
 
 ## A kill this client was told about.
@@ -202,18 +220,26 @@ func _record() -> void:
 	var now: float = now_fn.call()
 	var shot := {}
 	var players: Array = players_fn.call()
+	var ids: Array = []
+	ids.resize(players.size())
+	var i := 0
 	for p: Node in players:
+		var id: Variant = id_of_fn.call(p)
+		ids[i] = id
+		i += 1
 		var row: Array = state_fn.call(p)
 		if not row.is_empty():
-			shot[id_of_fn.call(p)] = row
+			shot[id] = row
 	var _kept := buffer.push_frame(now, shot)
 	var hz := rules.pose_hz if rules != null else pose_hz
 	if not _again.is_empty() or not pose_fn.is_valid() or hz <= 0.0 or now - _posed_at < 1.0 / hz - 0.001:
 		return
 	var held := {}
 	var same := pose_unchanged_fn.is_valid()
+	i = -1
 	for p: Node in players:
-		var id: Variant = id_of_fn.call(p)
+		i += 1
+		var id: Variant = ids[i]
 		# A PackedFloat32Array is copy-on-write: keeping the last read again shares it, it does not copy it.
 		if same and _last_poses.has(id) and bool(pose_unchanged_fn.call(p)):
 			held[id] = _last_poses[id]
@@ -274,6 +300,8 @@ func pose(s: Dictionary, killer_id: Variant, victim_id: Variant) -> Dictionary:
 	var behind := int(camera_mode_fn.call()) == DotKillViewRules.Camera.BEHIND
 	var drawn := poses.sample(float(s["time"])) if apply_pose_fn.is_valid() and s.has("time") else {}
 	_again = [s, killer_id, victim_id]
+	if not _reposing and _reposed_at == Engine.get_process_frames():
+		_posed_after = _reposed_at
 	var out := {}
 	for id: Variant in b:
 		var p := _player(id)
