@@ -131,9 +131,7 @@ func path_for(header: DotReplayHeader) -> String:
 
 
 static func _safe(s: String) -> String:
-	var out := ""
-	for ch in s:
-		out += ch if (ch.is_valid_identifier() or ch.is_valid_int() or ch == "-") else "_"
+	var out := DotPaths.slugify(s)
 	return out if out != "" else "unnamed"
 
 
